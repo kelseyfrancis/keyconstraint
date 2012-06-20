@@ -1,6 +1,31 @@
-*.class
+# Temporary output from Maven
+target/
 
-# Package Files #
-*.jar
-*.war
-*.ear
+# Temporary output from TestNG
+test-output/
+temp-testng-customsuite.xml
+
+# Intellij IDEA files
+*.iml
+*.ipr
+*.iws
+.idea
+
+# Libraries and temporary files from editors
+*.o
+*.lo
+*.la
+\#*#
+.*.rej
+*.rej
+.*~
+*~
+.#*
+.*.swp
+
+# Build recipes
+Capfile
+Rakefile
+
+#JRebel
+rebel.xml
