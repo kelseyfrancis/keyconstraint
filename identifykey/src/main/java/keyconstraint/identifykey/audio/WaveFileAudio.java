@@ -12,14 +12,14 @@ import java.nio.channels.FileChannel;
  */
 public class WaveFileAudio implements Audio {
 
-    private final short[] samples;
+    private final double[] samples;
     private final int sampleRateInHz;
     private final int channels;
 
     public WaveFileAudio(File file) throws IOException {
         int headerLengthInBytes = 44;
 
-        samples = new short[(int) ((file.length() - headerLengthInBytes) / 2)];
+        samples = new double[(int) ((file.length() - headerLengthInBytes) / 2)];
         FileInputStream inputStream = new FileInputStream(file);
         FileChannel channel = inputStream.getChannel();
 
@@ -45,19 +45,19 @@ public class WaveFileAudio implements Audio {
         byteBuffer.clear();
 
         int bytesRead;
-        int shortsRead = 0;
+        int samplesRead = 0;
         while ((bytesRead = channel.read(byteBuffer)) != -1) {
             byteBuffer.position(0);
             byteBuffer.limit(bytesRead);
             while (byteBuffer.hasRemaining()) {
-                samples[shortsRead++] = byteBuffer.getShort();
+                samples[samplesRead++] = ((double) byteBuffer.getShort()) / Short.MAX_VALUE;
             }
             byteBuffer.clear();
         }
     }
 
     @Override
-    public short[] getSamples() {
+    public double[] getSamples() {
         return samples;
     }
 

@@ -1,9 +1,9 @@
 package keyconstraint.identifykey.audio.writer;
 
+import keyconstraint.identifykey.audio.Audio;
+
 import java.io.IOException;
 import java.io.OutputStream;
-
-import keyconstraint.identifykey.audio.Audio;
 
 public class AuFileWriter {
 
@@ -16,7 +16,7 @@ public class AuFileWriter {
     }
 
     public void write() throws IOException {
-        short[] samples = audio.getSamples();
+        double[] samples = audio.getSamples();
         int bitsPerSample = audio.getBitsPerSample();
         int bytesPerSample = bitsPerSample / Byte.SIZE;
         int lengthInBytes = samples.length * bytesPerSample;
@@ -30,8 +30,8 @@ public class AuFileWriter {
         out.writeBigEndian(audio.getChannels());        // num channels
 
         // data
-        for (short sample : samples) {
-            out.writeBigEndian(sample);
+        for (double sample : samples) {
+            out.writeBigEndian((short) Math.round(sample * Short.MAX_VALUE));
         }
     }
 }

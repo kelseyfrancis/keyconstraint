@@ -2,12 +2,12 @@ package keyconstraint.identifykey.audio;
 
 public class ArrayAudio implements Audio {
 
-    private final short[] samples;
+    private final double[] samples;
     private final int sampleRateInHz;
     private final int channels;
     private final int bitsPerSample;
 
-    public ArrayAudio(short[] samples, int sampleRateInHz, int channels, int bitsPerSample) {
+    public ArrayAudio(double[] samples, int sampleRateInHz, int channels, int bitsPerSample) {
         this.samples = samples;
         this.sampleRateInHz = sampleRateInHz;
         this.channels = channels;
@@ -15,7 +15,7 @@ public class ArrayAudio implements Audio {
     }
 
     @Override
-    public short[] getSamples() {
+    public double[] getSamples() {
         return samples;
     }
 

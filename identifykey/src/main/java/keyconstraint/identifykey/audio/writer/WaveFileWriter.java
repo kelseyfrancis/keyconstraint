@@ -1,9 +1,9 @@
 package keyconstraint.identifykey.audio.writer;
 
+import keyconstraint.identifykey.audio.Audio;
+
 import java.io.IOException;
 import java.io.OutputStream;
-
-import keyconstraint.identifykey.audio.Audio;
 
 /**
  * Format reference: https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
@@ -19,7 +19,7 @@ public class WaveFileWriter {
     }
 
     public void write() throws IOException {
-        short[] samples = audio.getSamples();
+        double[] samples = audio.getSamples();
         int bitsPerSample = audio.getBitsPerSample();
         int bytesPerSample = bitsPerSample / Byte.SIZE;
         int lengthInBytes = samples.length * bytesPerSample;
@@ -48,8 +48,8 @@ public class WaveFileWriter {
         out.writeLittleEndian(lengthInBytes);   // subchunk 2 size
 
         // data
-        for (short sample : samples) {
-            out.writeLittleEndian(sample);
+        for (double sample : samples) {
+            out.writeLittleEndian((short) Math.round(sample * Short.MAX_VALUE));
         }
         out.flush();
     }
