@@ -1,4 +1,5 @@
-_note = 'C        -        D        -        E        F        -        G        -        A        -        B'
+_note = 'C        -        D        -        E        F        -        G        -        A        -        B'.split()
+
 _frequency = [
  [   16.35,   17.32,   18.35,   19.45,   20.60,   21.83,   23.12,   24.50,   25.96,   27.50,   29.14,   30.87 ],
  [   32.70,   34.65,   36.71,   38.89,   41.20,   43.65,   46.25,   49.00,   51.91,   55.00,   58.27,   61.74 ],
@@ -10,51 +11,108 @@ _frequency = [
  [ 2093.00, 2217.46, 2349.32, 2489.02, 2637.02, 2793.83, 2959.96, 3135.96, 3322.44, 3520.00, 3729.31, 3951.07 ],
 ]
 
-_major = [
-  [ 'C  D  E  F  G  A  B ' ],
-  [ 'Db Eb F  Gb Ab Bb C ' ],
-  [ 'D  E  F# G  A  B  C#' ],
-  [ 'Eb F  G  Ab Bb C  D ' ],
-  [ 'E  F# G# A  B  C# D#' ],
-  [ 'F  G  A  Bb C  D  E ' ],
-  [ 'Gb Ab Bb Cb Db Eb F ' ],
-  [ 'G  A  B  C  D  E  F#' ],
-  [ 'Ab Bb C  Db Eb F  G ' ],
-  [ 'A  B  C# D  E  F# G#' ],
-  [ 'Bb C  D  Eb F  G  A ' ],
-  [ 'B  C# D# E  F# G# A#' ],
-]
-_minor = [
-  [ 'C  D  Eb F  G  Ab Bb' ],
-  [ 'C# D# E  F# G# A  B ' ],
-  [ 'D  E  F  G  A  Bb C ' ],
-  [ 'Eb F  Gb Ab Bb Cb Db' ],
-  [ 'E  F# G  A  B  C  D ' ],
-  [ 'F  G  Ab Bb C, Db Eb' ],
-  [ 'F# G# A  B  C# D  E ' ],
-  [ 'G  A  Bb C  D  Eb F ' ],
-  [ 'G# A# B  C# D# E  F#' ],
-  [ 'A  B  C  D  E  F  G ' ],
-  [ 'Bb C  Db Eb F, Gb Ab' ],
-  [ 'B  C# D  E  F# G  A ' ],
-]
-
-_note_map = dict(filter(lambda x : x, map(lambda (i, s): (None if s == '-' else (s, i)), enumerate(_note.split()))))
+_note_map = dict(
+  filter(
+    lambda x : x, 
+    map(
+      lambda (i, s): (None if s == '-' else (s, i)), 
+      enumerate(_note)
+    )
+  )
+)
 
 _modifier = { '#': 1, 'b': -1 }
 
-def _note_to_index(note):
-  return (_note_map[note[0].upper()] + ( _modifier[note[1]] if len(note) > 1 else 0 )) % len(_note);
+def _note_index(note):
+  base = _note_map[note[0].upper()]
+  modifier = _modifier[note[1]] if len(note) > 1 else 0 
+  return (base + modifier) % len(_note);
 
-def _note_to_frequency(note, octave):
-  return _frequency[octave][_note_to_index(note)]
+_scale = {
+  'major': [
+    'C  D  E  F  G  A  B ',
+    'Db Eb F  Gb Ab Bb C ',
+    'D  E  F# G  A  B  C#',
+    'Eb F  G  Ab Bb C  D ',
+    'E  F# G# A  B  C# D#',
+    'F  G  A  Bb C  D  E ',
+    'Gb Ab Bb Cb Db Eb F ',
+    'G  A  B  C  D  E  F#',
+    'Ab Bb C  Db Eb F  G ',
+    'A  B  C# D  E  F# G#',
+    'Bb C  D  Eb F  G  A ',
+    'B  C# D# E  F# G# A#',
+  ],
+  'minor': [
+    'C  D  Eb F  G  Ab Bb',
+    'C# D# E  F# G# A  B ',
+    'D  E  F  G  A  Bb C ',
+    'Eb F  Gb Ab Bb Cb Db',
+    'E  F# G  A  B  C  D ',
+    'F  G  Ab Bb C  Db Eb',
+    'F# G# A  B  C# D  E ',
+    'G  A  Bb C  D  Eb F ',
+    'G# A# B  C# D# E  F#',
+    'A  B  C  D  E  F  G ',
+    'Bb C  Db Eb F  Gb Ab',
+    'B  C# D  E  F# G  A ',
+  ]
+}
+_scale = dict(
+  list(
+    map(
+      lambda (name, scales) : (
+        name,
+        map(
+          lambda s: { 
+            'name': s.split(), 
+            'index': map(
+              lambda n: _note_index(n),
+              s.split()
+            )
+          }, 
+          scales
+        )
+      ),
+      _scale.iteritems()
+    )
+  )
+)
 
-def _key_to_scale(key):
-  return (_major if key.istitle() else _minor)[_note_to_index(key)]
-
+#
+# Gives a frequency corresponding to a particular note.
+#
 # Parameters:
-#   note - e.g. "C" (C), "C#" (C sharp), "Eb" (E flat)
-#   key - e.g. "C" (C major), "c" (C minor), "d#" (D sharp minor)
-def frequency(note = 'A', key = None, octave = 4):
-  pass
+#   note   - Examples: "C" (C), "C#" (C sharp), "Eb" (E flat).
+#   octave - int with 0 being the lowest frequency range (16-30 Hz)
+#            and 7 the highest (2KHz - 4KHz).
+#
+# Returns:
+#   The frequency of the note.
+#
+def frequency(note, octave):
+  return _frequency[octave][_note_index(note)]
+
+def _get_scale(key):
+  type = 'major' if key.istitle() else 'minor'
+  return _scale [type][_note_index(key)]
+
+#
+# Shifts a note from from_key to to_key.
+#
+# Parameters:
+#   note     - A note in the from_key scale.
+#   from_key - The original note belongs to this key.
+#   to_key   - The returned note belongs to this key.
+#
+# Returns:
+#   The name of the "equivalent" note in the new key.
+#
+# Example:
+#   shift_key('A', 'C', 'g#') shifts an A note from C major
+#   to G sharp minor, and the resulting note is 'E'.
+#
+def shift_key(note, from_key, to_key):
+  i    = _get_scale(from_key)['index'].index(_note_index(note))
+  return _get_scale(to_key)['name'][i]
 
