@@ -60,6 +60,8 @@ public class WaveFileAudio implements Audio {
             }
             byteBuffer.clear();
         }
+
+        channel.close();
     }
 
     @Override

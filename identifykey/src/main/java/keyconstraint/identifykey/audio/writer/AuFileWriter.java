@@ -33,5 +33,6 @@ public class AuFileWriter {
         for (double sample : samples) {
             out.writeBigEndian((short) Math.round(sample * Short.MAX_VALUE));
         }
+        out.flush();
     }
 }
