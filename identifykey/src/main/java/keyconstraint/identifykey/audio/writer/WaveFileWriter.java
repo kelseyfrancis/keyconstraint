@@ -28,6 +28,10 @@ public class WaveFileWriter {
         int blockAlign = numChannels * bytesPerSample;
         int byteRate = sampleRateInHz * blockAlign;
 
+        if (bitsPerSample != Short.SIZE && bitsPerSample != Byte.SIZE) {
+            throw new IOException("Cannot write " + bitsPerSample + "-bit samples");
+        }
+
         // header
         out.writeBigEndian(0x52494646);             // "RIFF"
         out.writeLittleEndian(36 + lengthInBytes);  // chunk size
@@ -49,7 +53,11 @@ public class WaveFileWriter {
 
         // data
         for (double sample : samples) {
-            out.writeLittleEndian((short) Math.round(sample * Short.MAX_VALUE));
+            if (bitsPerSample == Short.SIZE) {
+                out.writeLittleEndian((short) Math.round(sample * Short.MAX_VALUE));
+            } else {
+                out.write((byte) Math.round(sample * Byte.MAX_VALUE));
+            }
         }
         out.flush();
     }

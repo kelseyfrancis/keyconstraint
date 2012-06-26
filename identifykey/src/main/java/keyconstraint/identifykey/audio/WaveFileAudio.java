@@ -37,8 +37,8 @@ public class WaveFileAudio implements Audio {
         sampleRateInHz = byteBuffer.getInt();
         byteBuffer.position(34);
         short bitsPerSample = byteBuffer.getShort();
-        if (bitsPerSample != Short.SIZE) {
-            throw new IOException("Can only read 16-bit samples");
+        if (bitsPerSample != Short.SIZE && bitsPerSample != Byte.SIZE) {
+            throw new IOException("Cannot read " + bitsPerSample + "-bit samples");
         }
 
         // read samples
@@ -50,7 +50,13 @@ public class WaveFileAudio implements Audio {
             byteBuffer.position(0);
             byteBuffer.limit(bytesRead);
             while (byteBuffer.hasRemaining()) {
-                samples[samplesRead++] = ((double) byteBuffer.getShort()) / Short.MAX_VALUE;
+                double sample;
+                if (bitsPerSample == Short.SIZE) {
+                    sample = ((double) byteBuffer.getShort()) / Short.MAX_VALUE;
+                } else {
+                    sample = ((double) byteBuffer.get()) / Byte.MAX_VALUE;
+                }
+                samples[samplesRead++] = sample;
             }
             byteBuffer.clear();
         }
