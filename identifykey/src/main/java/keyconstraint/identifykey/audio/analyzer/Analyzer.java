@@ -1,18 +1,17 @@
 package keyconstraint.identifykey.audio.analyzer;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-
 import com.google.common.collect.Lists;
-import edu.emory.mathcs.jtransforms.dct.DoubleDCT_1D;
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
 import keyconstraint.identifykey.audio.analyzer.window.Window;
 import keyconstraint.identifykey.audio.analyzer.window.WindowFunction;
 import keyconstraint.identifykey.audio.analyzer.window.WindowFunctions;
 import keyconstraint.identifykey.audio.mixer.StereoToMonoMixer;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 public class Analyzer {
 
@@ -31,12 +30,19 @@ public class Analyzer {
 
         int len = samples.length;
 
-        DoubleDCT_1D dct = new DoubleDCT_1D(frameSize);
-        int end = len - (len % frameSize);
+        DoubleFFT_1D fft = new DoubleFFT_1D(frameSize);
+        int end = len - (len % frameSize) - increment;
         List<Frame> frames = Lists.newArrayListWithCapacity(len / increment);
         for (int offset = 0; offset < end; offset += increment) {
-            double[] spectrum = window.apply(samples, offset);
-            dct.forward(spectrum, false);
+            double[] fftResult = new double[frameSize*2];
+            window.apply(samples, offset, fftResult);
+            fft.realForwardFull(fftResult);
+            double[] spectrum = new double[frameSize];
+            for (int i = 0; i < frameSize; i++) {
+                double re = fftResult[2 * i];
+                double im = fftResult[(2 * i) + 1];
+                spectrum[i] = Math.sqrt((re * re) + (im * im));
+            }
             frames.add(new Frame(spectrum));
         }
     }
@@ -59,6 +65,6 @@ public class Analyzer {
         if (in.getChannels() == 2) {
             in = new StereoToMonoMixer().mix(in);
         }
-        new Analyzer(WindowFunctions.hamming).analyze(in);
+        new Analyzer(WindowFunctions.rectangular).analyze(in);
     }
 }

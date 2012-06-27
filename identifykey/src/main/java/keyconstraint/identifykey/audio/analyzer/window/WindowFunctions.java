@@ -6,6 +6,14 @@ import static java.lang.Math.sin;
 
 public class WindowFunctions {
 
+    /** http://en.wikipedia.org/wiki/Window_function#Rectangular_window **/
+    public static final WindowFunction rectangular = new WindowFunction() {
+        @Override
+        public double w(int n, int N) {
+            return 1;
+        }
+    };
+
     /** http://en.wikipedia.org/wiki/Window_function#Hamming_window **/
     public static final WindowFunction hamming = new WindowFunction() {
         @Override

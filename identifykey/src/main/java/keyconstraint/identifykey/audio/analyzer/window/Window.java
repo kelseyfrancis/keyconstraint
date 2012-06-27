@@ -14,11 +14,9 @@ public class Window {
         }
     }
 
-    public double[] apply(double[] samples, int offset) {
-        double[] window = new double[N];
+    public void apply(double[] samples, int offset, double[] dst) {
         for (int n = 0; n < N; n++) {
-            window[n] = samples[n + offset] * w[n];
+            dst[n] = samples[n + offset] * w[n];
         }
-        return window;
     }
 }
