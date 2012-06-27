@@ -33,8 +33,14 @@ class Context:
   def sample_rate(self):
     return self._sample_rate
 
-  def sine(self, note=None, freq=None, amp=1):
-    return Sine(self, note, freq, amp)
+  def sine(self, freq=None, amp=1):
+    return Sine(self, freq, amp)
+
+  def triangle(self, freq=None, amp=1):
+    return Triangle(self, freq, amp)
+
+  def square(self, freq=None, amp=1):
+    return Square(self, freq, amp)
 
   def fm(self, carrier, modulator):
     return FreqMod(carrier, modulator)
@@ -74,15 +80,48 @@ class Player ( Thread ):
 
 class Sine:
 
-  def __init__(self, context, note, freq, amp):
+  def __init__(self, context, freq, amp):
     self._context = context
-    self._freq = freq if freq is not None else note.frequency()
+    self._freq = freq
     self._amp = amp
     self._phase = 0
 
   def next(self, t=1):
     self._phase = ( self._phase + ( t * self._freq * 2 * pi / self._context.sample_rate() ) ) % ( 2 * pi )
     return sin( self._phase ) * self._amp
+
+  def is_live(self):
+    return True
+
+class Triangle:
+
+  def __init__(self, context, freq, amp):
+    self._context = context
+    self._freq = freq
+    self._amp = amp
+    self._phase = 0
+
+  def next(self, t=1):
+    self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
+    if self._phase < 1:
+      return 2. * self._phase * self._amp - 1
+    else:
+      return -1. * (self._phase * self._amp) + 1
+
+  def is_live(self):
+    return True
+
+class Square:
+
+  def __init__(self, context, freq, amp):
+    self._context = context
+    self._freq = freq
+    self._amp = amp
+    self._phase = 0
+
+  def next(self, t=1):
+    self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
+    return -1 if self._phase < 1 else 1
 
   def is_live(self):
     return True
@@ -94,7 +133,7 @@ class FreqMod:
     self._modulator = modulator
 
   def next(self, t=1):
-    return self._carrier.next(t * abs(self._modulator.next(t)))
+    return self._carrier.next( t + t * self._modulator.next(t) / 2 )
 
 class Interval:
   
