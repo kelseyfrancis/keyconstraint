@@ -7,11 +7,8 @@ import synth
 def beep(c, n, i):
   x = c.adsr(
     c.fm(
-      carrier = c.sine(note = n), 
-      modulator = c.fm(
-        carrier = c.sine(freq = 2000),
-        modulator = c.sine(freq = 10)
-      )
+      carrier = c.triangle(freq = n.frequency()),
+      modulator = c.sine(freq = 6, amp=.05)
     ),
     [.05, .05, .2, .1]
   )
@@ -20,7 +17,7 @@ def beep(c, n, i):
 if __name__ == '__main__':
   c = synth.Context()
   c.daemon = True
-  notes = list(itertools.islice(music.notes('Bb', 4), 0, 8))
+  notes = list(itertools.islice(music.notes('a', 4), 0, 8))
   for i, n in enumerate(notes):
     c.add_module(beep(c, n, i))
   c.start()
