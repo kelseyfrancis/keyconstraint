@@ -3,6 +3,7 @@ package keyconstraint.identifykey.audio.analyzer.window;
 import static java.lang.Math.PI;
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;
+import static keyconstraint.identifykey.audio.analyzer.Math2.sq;
 
 public class WindowFunctions {
 
@@ -30,10 +31,5 @@ public class WindowFunctions {
         }
     };
 
-    private WindowFunctions() {
-    }
-
-    private static double sq(double a) {
-        return a * a;
-    }
+    private WindowFunctions() {}
 }
