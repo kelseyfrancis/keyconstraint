@@ -41,14 +41,14 @@ class Context:
   def sample_rate(self):
     return self._sample_rate
 
-  def sine(self, freq=None, amp=1, noise=None):
+  def sine(self, freq=None, amp=1, noise=0):
     return Sine(self, freq, amp, noise)
 
-  def triangle(self, freq=None, amp=1):
-    return Triangle(self, freq, amp)
+  def triangle(self, freq=None, amp=1, noise=0):
+    return Triangle(self, freq, amp, noise)
 
-  def square(self, freq=None, amp=1):
-    return Square(self, freq, amp)
+  def square(self, freq=None, amp=1, noise=0):
+    return Square(self, freq, amp, noise)
 
   def fm(self, carrier, modulator):
     return FreqMod(carrier, modulator)
@@ -110,7 +110,7 @@ class Sine:
   def next(self, t):
     self._phase = ( self._phase + ( t * self._freq / self._context.sample_rate() ) ) % 1.
     x = sine_table( self._phase )
-    if self._noise is not None:
+    if self._noise != 0:
       x = x + random.gauss(0, self._noise)
     return x * self._amp
 
@@ -119,33 +119,41 @@ class Sine:
 
 class Triangle:
 
-  def __init__(self, context, freq, amp):
+  def __init__(self, context, freq, amp, noise):
     self._context = context
     self._freq = freq
     self._amp = amp
     self._phase = 0
+    self._noise = noise
 
   def next(self, t):
     self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
+    p = self._phase
+    if self._noise != 0:
+      p = p + random.gauss(0, self._noise)
     if self._phase < 1:
-      return 2. * self._phase * self._amp - 1
+      return 2. * p * self._amp - 1
     else:
-      return -1. * (self._phase * self._amp) + 1
+      return -1. * (p * self._amp) + 1
 
   def liveness(self):
     return 'live'
 
 class Square:
 
-  def __init__(self, context, freq, amp):
+  def __init__(self, context, freq, amp, noise):
     self._context = context
     self._freq = freq
     self._amp = amp
     self._phase = 0
+    self._noise = noise
 
   def next(self, t):
     self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
-    return -1 if self._phase < 1 else 1
+    x = -1 if self._phase < 1 else 1
+    if self._noise != 0:
+      x = x + random.gauss(0, self._noise)
+    return x
 
   def liveness(self):
     return 'live'
