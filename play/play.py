@@ -5,19 +5,17 @@ import music
 import synth
 
 def beep(c, n, i):
-  x = c.adsr(
-    c.fm(
-      carrier = c.triangle(freq = n.frequency()),
-      modulator = c.sine(freq = 6, amp=.05)
-    ),
-    [.05, .05, .2, .1]
-  )
-  return c.interval(x, i * .5)
+  x = c.sine(freq = n.frequency())
+  x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp=.05))
+  x = c.amp_env(x, c.adsr(.05, .05, .2, .1))
+  x = c.interval(x, i * .5, .4)
+  return x;
 
 if __name__ == '__main__':
   c = synth.Context()
   c.daemon = True
-  notes = list(itertools.islice(music.notes('A', 4), 0, 8))
+  notes = list(itertools.islice(music.notes('C', 4, step=1), 0, 8))
+  notes = list(music.notes('C', 1, step=1))
   for i, n in enumerate(notes):
     c.add_module(beep(c, n, i))
   c.start()

@@ -1,15 +1,22 @@
 import itertools
 from math import pi, sin
+import numpy as np
 import struct
 from subprocess import Popen, PIPE
 import sys
 from threading import Thread
 from time import sleep, time
 
+_sine_table_size = 1000
+_sine_table = dict(list([ (i, sin(2 * pi * i / _sine_table_size)) for i in range(0, _sine_table_size + 1) ]))
+def sine_table(x):
+  return sin(2*pi*x)
+  return _sine_table[round(_sine_table_size * x)]
+
 class Context:
 
   def __init__(self):
-    self._sample_rate = 22050
+    self._sample_rate = 44100
     self._modules = []
     self._player = Player(self)
 
@@ -17,12 +24,12 @@ class Context:
     self._modules.append(module)
 
   def modules(self):
-    self._modules = filter(lambda m : m.is_live(), self._modules)
-    return list(self._modules)
+    self._modules = filter(lambda m : m.liveness() != 'dead', self._modules)
+    return dict(list([ (liveness, list(filter(lambda m : m.liveness() == liveness, self._modules))) for liveness in ['live', 'sleep'] ]))
 
   def open(self):
-    command = 'aplay -f cd -r %d' % int(self.sample_rate())
-    return Popen(command.split(), stdin=PIPE).stdin
+    command = 'aplay -f cd -c1 -r %d' % int(self.sample_rate())
+    return Popen(command.split(), stdin=PIPE)
 
   def start(self):
     self._player.start()
@@ -51,8 +58,8 @@ class Context:
   def amp_env(self, module, envelope):
     return AmpEnv(self, module, envelope)
 
-  def adsr(self, module, duration):
-    return ADSR(self, module, duration)
+  def adsr(self, a, d, s, r):
+    return ADSR(self, a, d, s, r)
 
 class Player ( Thread ):
 
@@ -60,20 +67,32 @@ class Player ( Thread ):
     super(Player, self).__init__()
     self._context = context
     self._halt = False
+    self._buffer_ahead = 0.005
+    self._sleep = 0.001
 
   def run(self):
     c = self._context
     audio = c.open()
     buffer_increment = 1
     t = time()
+    t_inc = 1. / c.sample_rate()
+    intensity_shift = 2**15
     while not self._halt:
       now = time()
-      while (t < now + 0.005):
-        t = t + 1. / c.sample_rate()
-        x = sum([ m.next() for m in c.modules() ])
-        s = int(x * 100) + 2**15
-        audio.write(struct.pack('<I', s))
-      sleep(.001)
+      modules = c.modules()
+      live_modules = modules['live']
+      t_diff = 0
+      while (t < now + self._buffer_ahead):
+        t_diff = t_diff + 1
+        t = t + t_inc
+        x = sum([ m.next(t = 1.) for m in live_modules ])
+        s = int(x * 100) + intensity_shift
+        audio.stdin.write(struct.pack('<H', s))
+      for m in modules['sleep']:
+        if m.skip:
+          m.skip(t_diff)
+      sleep(self._sleep)
+    audio.kill()
 
   def stop(self):
     self._halt = True
@@ -86,12 +105,12 @@ class Sine:
     self._amp = amp
     self._phase = 0
 
-  def next(self, t=1):
-    self._phase = ( self._phase + ( t * self._freq * 2 * pi / self._context.sample_rate() ) ) % ( 2 * pi )
-    return sin( self._phase ) * self._amp
+  def next(self, t):
+    self._phase = ( self._phase + ( t * self._freq / self._context.sample_rate() ) ) % 1.
+    return sine_table( self._phase ) * self._amp
 
-  def is_live(self):
-    return True
+  def liveness(self):
+    return 'live'
 
 class Triangle:
 
@@ -101,15 +120,15 @@ class Triangle:
     self._amp = amp
     self._phase = 0
 
-  def next(self, t=1):
+  def next(self, t):
     self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
     if self._phase < 1:
       return 2. * self._phase * self._amp - 1
     else:
       return -1. * (self._phase * self._amp) + 1
 
-  def is_live(self):
-    return True
+  def liveness(self):
+    return 'live'
 
 class Square:
 
@@ -119,12 +138,12 @@ class Square:
     self._amp = amp
     self._phase = 0
 
-  def next(self, t=1):
+  def next(self, t):
     self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
     return -1 if self._phase < 1 else 1
 
-  def is_live(self):
-    return True
+  def liveness(self):
+    return 'live'
 
 class FreqMod:
 
@@ -132,17 +151,24 @@ class FreqMod:
     self._carrier = carrier
     self._modulator = modulator
 
-  def next(self, t=1):
+  def next(self, t):
     return self._carrier.next( t + t * self._modulator.next(t) / 2 )
+
+  def liveness(self):
+    c = self._carrier.liveness()
+    m = self._modulator.liveness()
+    if c == 'dead' or m == 'dead': return 'dead'
+    if c == 'sleep' or m == 'sleep': return 'sleep'
+    return 'live'
 
 class Interval:
   
   def __init__(self, context, module, delay_seconds=0, duration_seconds=None):
     self._module = module
-    self._delay_remaining = context.sample_rate() * delay_seconds
-    self._play_remaining = None if duration_seconds is None else context.sample_rate() * duration_seconds
+    self._delay_remaining = round(context.sample_rate() * delay_seconds)
+    self._play_remaining = None if duration_seconds is None else round(context.sample_rate() * duration_seconds)
 
-  def next(self, t=1):
+  def next(self, t):
     if self._delay_remaining != 0:
       self._delay_remaining = self._delay_remaining - 1
       return 0
@@ -153,8 +179,13 @@ class Interval:
       return self._module.next(t)
     return 0
 
-  def is_live(self):
-    return (self._play_remaining is None or self._delay_remaining != 0 or self._play_remaining != 0) and self._module.is_live()
+  def skip(self, t):
+    self._delay_remaining = max(0, self._delay_remaining - t)
+
+  def liveness(self):
+    if self._delay_remaining != 0: return 'sleep'
+    if self._play_remaining is None or self._play_remaining != 0: return self._module.liveness()
+    return 'dead'
 
 class AmpEnv:
 
@@ -162,39 +193,55 @@ class AmpEnv:
     self._module = module
     self._envelope = envelope
 
-  def next(self, t=1):
-    if not self.is_live():
+  def next(self, t):
+    if self.liveness() != 'live':
       return 0
     return self._module.next(t) * self._envelope.next(1)
 
-  def is_live(self):
-    return self._envelope.is_live() and self._module.is_live()
+  def liveness(self):
+    e = self._envelope.liveness()
+    m = self._module.liveness()
+    if e == 'dead' or m == 'dead': return 'dead'
+    if e == 'sleep' or m == 'sleep': return 'sleep'
+    return 'live'
 
 class ADSR:
 
-  def __init__(self, context, module, duration):
-    self._module = module
-    self._duration = list([ d * context.sample_rate() for d in duration ])
-    self._t = 0
+  def __init__(self, context, a, d, s, r):
+    self._duration = list([ d * context.sample_rate() for d in [a,d,s,r] ])
+    self._t = 0.
     self._sustain_amp = .6
+    self._section = 'a'
 
-  def next(self, t=1):
+  def next(self, t):
     d = self._duration
     _t = self._t
     sa = self._sustain_amp
-    if _t < d[0]:
+    if self._section == 'a':
       x = _t / d[0]
-    elif _t < d[0] + d[1]:
-      x = sa + (_t - d[0]) * (1-sa) / d[1]
-    elif _t < d[0] + d[1] + d[2]:
+      if t > d[0]:
+        self._section = 'd'
+        self._t = 0
+    elif self.section == 'd':
+      x = sa + _t * (1-sa) / d[1]
+      if _t > d[1]:
+        self._section = 's'
+        self._t = 0
+    elif self._section == 's':
       x = sa
-    elif _t < d[0] + d[1] + d[2] + d[3]:
-      x = sa - (_t - d[0] - d[1] - d[2]) * sa / d[3]
+      if _t > d[2]:
+        self._section = 'r'
+        self._t = 0
+    elif self._section == 'r':
+      x = sa - _t * sa / d[3]
+      if _t > d[3]:
+        self._section = None
+        self._t = 0
     else:
       x = 0
     self._t = _t + t
-    return x * self._module.next(t)
+    return x
 
-  def is_live(self):
-    return self._t < sum(self._duration)
+  def liveness(self):
+    return 'live' if self._section is not None else 'dead'
 
