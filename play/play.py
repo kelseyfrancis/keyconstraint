@@ -5,19 +5,22 @@ import music
 import synth
 
 def beep(c, n, i):
-  x = c.fm(
-    carrier = c.sine(note = n), 
-    modulator = c.fm(
-      carrier = c.sine(freq = 2000),
-      modulator = c.sine(freq = 10)
-    )
+  x = c.adsr(
+    c.fm(
+      carrier = c.sine(note = n), 
+      modulator = c.fm(
+        carrier = c.sine(freq = 2000),
+        modulator = c.sine(freq = 10)
+      )
+    ),
+    [.05, .05, .2, .1]
   )
-  return c.interval(x, i * .5, .4)
+  return c.interval(x, i * .5)
 
 if __name__ == '__main__':
   c = synth.Context()
   c.daemon = True
-  notes = list(itertools.islice(music.notes('C', 4), 0, 8))
+  notes = list(itertools.islice(music.notes('Bb', 4), 0, 8))
   for i, n in enumerate(notes):
     c.add_module(beep(c, n, i))
   c.start()

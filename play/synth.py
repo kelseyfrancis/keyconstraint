@@ -9,7 +9,7 @@ from time import sleep, time
 class Context:
 
   def __init__(self):
-    self._sample_rate = 44100
+    self._sample_rate = 22050
     self._modules = []
     self._player = Player(self)
 
@@ -39,8 +39,14 @@ class Context:
   def fm(self, carrier, modulator):
     return FreqMod(carrier, modulator)
 
-  def interval(self, module, delay_seconds, duration_seconds):
+  def interval(self, module, delay_seconds=0, duration_seconds=None):
     return Interval(self, module, delay_seconds, duration_seconds)
+
+  def amp_env(self, module, envelope):
+    return AmpEnv(self, module, envelope)
+
+  def adsr(self, module, duration):
+    return ADSR(self, module, duration)
 
 class Player ( Thread ):
 
@@ -92,20 +98,64 @@ class FreqMod:
 
 class Interval:
   
-  def __init__(self, context, module, delay_seconds, duration_seconds):
+  def __init__(self, context, module, delay_seconds=0, duration_seconds=None):
     self._module = module
     self._delay_remaining = context.sample_rate() * delay_seconds
-    self._play_remaining = context.sample_rate() * duration_seconds
+    self._play_remaining = None if duration_seconds is None else context.sample_rate() * duration_seconds
 
   def next(self, t=1):
     if self._delay_remaining != 0:
       self._delay_remaining = self._delay_remaining - 1
       return 0
+    if self._play_remaining is None:
+      return self._module.next(t)
     if self._play_remaining != 0:
       self._play_remaining = self._play_remaining - 1
       return self._module.next(t)
     return 0
 
   def is_live(self):
-    return self._delay_remaining != 0 or self._play_remaining != 0
+    return (self._play_remaining is None or self._delay_remaining != 0 or self._play_remaining != 0) and self._module.is_live()
+
+class AmpEnv:
+
+  def __init__(self, context, module, envelope):
+    self._module = module
+    self._envelope = envelope
+
+  def next(self, t=1):
+    if not self.is_live():
+      return 0
+    return self._module.next(t) * self._envelope.next(1)
+
+  def is_live(self):
+    return self._envelope.is_live() and self._module.is_live()
+
+class ADSR:
+
+  def __init__(self, context, module, duration):
+    self._module = module
+    self._duration = list([ d * context.sample_rate() for d in duration ])
+    self._t = 0
+    self._sustain_amp = .6
+
+  def next(self, t=1):
+    d = self._duration
+    _t = self._t
+    sa = self._sustain_amp
+    if _t < d[0]:
+      x = _t / d[0]
+    elif _t < d[0] + d[1]:
+      x = sa + (_t - d[0]) * (1-sa) / d[1]
+    elif _t < d[0] + d[1] + d[2]:
+      x = sa
+    elif _t < d[0] + d[1] + d[2] + d[3]:
+      x = sa - (_t - d[0] - d[1] - d[2]) * sa / d[3]
+    else:
+      x = 0
+    self._t = _t + t
+    return x * self._module.next(t)
+
+  def is_live(self):
+    return self._t < sum(self._duration)
 
