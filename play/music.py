@@ -15,6 +15,9 @@ def key(x):
 def frequency(x):
   return note(x).frequency()
 
+def notes(key, octave, start=None, step=1):
+  return Key.get(key).notes(octave, start=start, step=step)
+
 class NoteCategory:
 
   _letters = list('C-D-EF-G-A-B')
@@ -52,6 +55,9 @@ class NoteCategory:
     self._name = name
 
   def __str__(self):
+    return unicode(self).encode('utf-8')
+
+  def __unicode__(self):
     return '<NoteCategory %s>' % self.name()
 
   def __hash__(self):
@@ -94,6 +100,9 @@ class Note:
     self._octave = octave
 
   def __str__(self):
+    return unicode(self).encode('utf-8')
+
+  def __unicode__(self):
     return '<Note %s>' % self.name()
 
   def __hash__(self):
@@ -159,18 +168,40 @@ class Scale:
     return a.categories() == b.categories()
 
   def __str__(self):
+    return unicode(self).encode('utf-8')
+
+  def __unicode__(self):
     return '<Scale %s>' % list([ str(c) for c in self.categories() ]).join(' ')
 
   def categories(self):
     return self._categories
 
-  def notes(self, octave):
-    i = -1
+  def notes(self, octave, start = None, step = 1):
+    
+    if not step in [-1, 1]:
+      raise ValueError
+    
+    forward = step > 0
+    start = self.categories()[0] if start is None else note_category(start)
+    
+    categories = self.categories()
+    if not forward: 
+      categories = list(reversed(categories))
+    start_index = categories.index(start)
+    categories = itertools.cycle(categories)
+    categories = itertools.islice(categories, start_index, None)
+
+    i = -1 if forward else 100
     o = octave
-    for c in itertools.cycle(self.categories()):
-      if c.index() < i:
-        o = o + 1
-      i = c.index()
+
+    for c in categories:
+      j = c.index()
+      octave_boundary = (j < i) if forward else (j > i)
+      if octave_boundary:
+        o = o + (1 if forward else -1)
+        if o < 0 or o > 7:
+          return
+      i = j
       yield Note(c, o)
 
 class Key:
@@ -219,6 +250,9 @@ class Key:
     self._category = category
 
   def __str__(self):
+    return unicode(self).encode('utf-8')
+ 
+  def __unicode__(self):
     return '<Key %s>' % self.name()
 
   def __eq__(a, b):
@@ -243,6 +277,6 @@ class Key:
   def categories(self):
     return self.scale().categories()
 
-  def notes(self, octave):
-    return self.scale().notes(octave)
+  def notes(self, octave, start=None, step=1):
+    return self.scale().notes(octave, start=start, step=step)
 

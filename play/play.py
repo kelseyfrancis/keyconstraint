@@ -83,10 +83,9 @@ if __name__ == '__main__':
   c = Context()
   p = Play(c)
   p.daemon = True
-  notes = list(itertools.islice(music.key('g#').notes(4), 0, 8))
+  notes = list(itertools.islice(music.notes('g#', 4, start='B', step=-1), 0, 8))
   duration = .5
   for i, n in enumerate(notes):
-    print(n.frequency())
     p.add(TimeRange(c, Sine(c, note=n), i * duration, duration))
   p.start()
   sys.stdin.readline()
