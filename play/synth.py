@@ -39,6 +39,9 @@ class Context:
   def triangle(self, freq=None, amp=1):
     return Triangle(self, freq, amp)
 
+  def square(self, freq=None, amp=1):
+    return Square(self, freq, amp)
+
   def fm(self, carrier, modulator):
     return FreqMod(carrier, modulator)
 
@@ -104,6 +107,24 @@ class Triangle:
       return 2. * self._phase * self._amp - 1
     else:
       return -1. * (self._phase * self._amp) + 1
+
+  def is_live(self):
+    return True
+
+class Square:
+
+  def __init__(self, context, freq, amp):
+    self._context = context
+    self._freq = freq
+    self._amp = amp
+    self._phase = 0
+
+  def next(self, t=1):
+    self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
+    return -1 if self._phase < 1 else 1
+
+  def is_live(self):
+    return True
 
 class FreqMod:
 

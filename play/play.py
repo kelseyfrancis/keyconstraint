@@ -17,7 +17,7 @@ def beep(c, n, i):
 if __name__ == '__main__':
   c = synth.Context()
   c.daemon = True
-  notes = list(itertools.islice(music.notes('a', 4), 0, 8))
+  notes = list(itertools.islice(music.notes('A', 4), 0, 8))
   for i, n in enumerate(notes):
     c.add_module(beep(c, n, i))
   c.start()
