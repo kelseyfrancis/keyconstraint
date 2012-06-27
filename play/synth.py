@@ -33,6 +33,15 @@ class Context:
   def sample_rate(self):
     return self._sample_rate
 
+  def sine(self, note=None, freq=None, amp=1):
+    return Sine(self, note, freq, amp)
+
+  def fm(self, carrier, modulator):
+    return FreqMod(carrier, modulator)
+
+  def interval(self, module, delay_seconds, duration_seconds):
+    return Interval(self, module, delay_seconds, duration_seconds)
+
 class Player ( Thread ):
 
   def __init__(self, context):
@@ -59,18 +68,27 @@ class Player ( Thread ):
 
 class Sine:
 
-  def __init__(self, context, note=None, freq=None, amp=1):
+  def __init__(self, context, note, freq, amp):
     self._context = context
     self._freq = freq if freq is not None else note.frequency()
     self._amp = amp
     self._phase = 0
 
-  def next(self):
-    self._phase = ( self._phase + ( self._freq * 2 * pi / self._context.sample_rate() ) ) % ( 2 * pi )
+  def next(self, t=1):
+    self._phase = ( self._phase + ( t * self._freq * 2 * pi / self._context.sample_rate() ) ) % ( 2 * pi )
     return sin( self._phase ) * self._amp
 
   def is_live(self):
     return True
+
+class FreqMod:
+
+  def __init__(self, carrier, modulator):
+    self._carrier = carrier
+    self._modulator = modulator
+
+  def next(self, t=1):
+    return self._carrier.next(t * abs(self._modulator.next(t)))
 
 class Interval:
   
@@ -79,13 +97,13 @@ class Interval:
     self._delay_remaining = context.sample_rate() * delay_seconds
     self._play_remaining = context.sample_rate() * duration_seconds
 
-  def next(self):
+  def next(self, t=1):
     if self._delay_remaining != 0:
       self._delay_remaining = self._delay_remaining - 1
       return 0
     if self._play_remaining != 0:
       self._play_remaining = self._play_remaining - 1
-      return self._module.next()
+      return self._module.next(t)
     return 0
 
   def is_live(self):
