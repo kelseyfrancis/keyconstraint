@@ -56,8 +56,8 @@ class Context:
   def interval(self, module, delay_seconds=0, duration_seconds=None):
     return Interval(self, module, delay_seconds, duration_seconds)
 
-  def amp_env(self, module, envelope):
-    return AmpEnv(self, module, envelope)
+  def am(self, carrier, modulator):
+    return AmpMod(self, carrier, modulator)
 
   def adsr(self, a, d, s, r):
     return ADSR(self, a, d, s, r)
@@ -200,20 +200,20 @@ class Interval:
     if self._play_remaining is None or self._play_remaining != 0: return self._module.liveness()
     return 'dead'
 
-class AmpEnv:
+class AmpMod:
 
-  def __init__(self, context, module, envelope):
-    self._module = module
-    self._envelope = envelope
+  def __init__(self, context, carrier, modulator):
+    self._carrier = carrier
+    self._modulator = modulator
 
   def next(self, t):
     if self.liveness() != 'live':
       return 0
-    return self._module.next(t) * self._envelope.next(1)
+    return self._carrier.next(t) * self._modulator.next(1)
 
   def liveness(self):
-    e = self._envelope.liveness()
-    m = self._module.liveness()
+    e = self._modulator.liveness()
+    m = self._carrier.liveness()
     if e == 'dead' or m == 'dead': return 'dead'
     if e == 'sleep' or m == 'sleep': return 'sleep'
     return 'live'
