@@ -17,7 +17,7 @@ def sine_table(x):
 class Context:
 
   def __init__(self):
-    self._sample_rate = 44100
+    self._sample_rate = 44100 / 2
     self._modules = []
     self._player = Player(self)
 
