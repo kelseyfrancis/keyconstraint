@@ -3,8 +3,10 @@ package keyconstraint.identifykey.feature;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
@@ -28,26 +30,26 @@ public class PitchClassProfile {
 
     private static final int semitonesPerOctave = 12;
 
+    private final double[] pitchDistByOctave;
     private final double[] pitchDist;
-    private final double[] allOctavesPitchDist;
 
     public PitchClassProfile(Spectrum spectrum) {
-        int octaves = 9;
-        pitchDist = new double[octaves * semitonesPerOctave]; // TODO allow more than one bin per semitone?
-        allOctavesPitchDist = new double[semitonesPerOctave];
+        int octaves = 11;
+        pitchDistByOctave = new double[octaves * semitonesPerOctave]; // TODO allow more than one bin per semitone?
+        pitchDist = new double[semitonesPerOctave];
         int numBins = spectrum.getNumBins();
         for (int bin = 0; bin < numBins; ++bin) {
             double binFreq = spectrum.getBinFreq(bin);
             int pitchClass = pitchClass(binFreq);
-            if (0 <= pitchClass && pitchClass < pitchDist.length) {
+            if (0 <= pitchClass && pitchClass < pitchDistByOctave.length) {
                 double magnitude = spectrum.getMagnitude(bin);
-                pitchDist[pitchClass] += magnitude;
-                allOctavesPitchDist[pitchClass % semitonesPerOctave] += magnitude;
+                pitchDistByOctave[pitchClass] += magnitude;
+                pitchDist[pitchClass % semitonesPerOctave] += magnitude;
             }
         }
 
+        normalize(pitchDistByOctave);
         normalize(pitchDist);
-        normalize(allOctavesPitchDist);
     }
 
     private static int pitchClass(double freq) {
@@ -58,6 +60,34 @@ public class PitchClassProfile {
         return notes[pitchClass % semitonesPerOctave];
     }
 
+    private static String noteWithOctaveForPitchClass(int pitchClass) {
+        return noteForPitchClass(pitchClass) + ((pitchClass / semitonesPerOctave) - 1);
+    }
+
+    public double[] getPitchDistByOctave() {
+        return pitchDistByOctave;
+    }
+
+    public Map<String, Double> getPitchDistByOctaveByNote() {
+        ImmutableMap.Builder<String, Double> byNote = ImmutableMap.builder();
+        for (int i = 0; i < pitchDistByOctave.length; i++) {
+            byNote.put(noteWithOctaveForPitchClass(i), pitchDistByOctave[i]);
+        }
+        return byNote.build();
+    }
+
+    public double[] getPitchDist() {
+        return pitchDist;
+    }
+
+    public Map<String, Double> getPitchDistByNote() {
+        ImmutableMap.Builder<String, Double> byNote = ImmutableMap.builder();
+        for (int i = 0; i < pitchDist.length; i++) {
+            byNote.put(noteForPitchClass(i), pitchDist[i]);
+        }
+        return byNote.build();
+    }
+
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
@@ -65,7 +95,7 @@ public class PitchClassProfile {
             s.append(String.format("%8s ", note));
         }
         s.append('\n');
-        for (double mag : allOctavesPitchDist) {
+        for (double mag : pitchDist) {
             s.append(String.format("%1.6f ", mag));
         }
         return s.toString();
@@ -85,6 +115,6 @@ public class PitchClassProfile {
                         return frame.getSpectrum();
                     }
                 })));
-        System.out.println(pcp);
+        System.out.println(pcp.getPitchDistByOctaveByNote());
     }
 }
