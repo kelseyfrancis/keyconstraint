@@ -1,5 +1,6 @@
 import itertools
 import sys
+from time import sleep
 
 import music
 import synth
@@ -13,11 +14,8 @@ def beep(c, n, i):
 
 if __name__ == '__main__':
   c = synth.Context()
-  c.daemon = True
   notes = list(itertools.islice(music.notes(sys.argv[1], 4, step=1), 0, 8))
   for i, n in enumerate(notes):
     c.add_module(beep(c, n, i))
   c.start()
-  sys.stdin.readline()
-  c.stop()
 

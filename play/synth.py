@@ -78,10 +78,13 @@ class Player ( Thread ):
     t = time()
     t_inc = 1. / c.sample_rate()
     intensity_shift = 2**15
+    h = 0
     while not self._halt:
       now = time()
       modules = c.modules()
       live_modules = modules['live']
+      h = (h + 1) if (len(modules['live']) == 0 and len(modules['sleep']) == 0) else 0
+      if h > 5: break
       t_diff = 0
       while (t < now + self._buffer_ahead):
         t_diff = t_diff + 1
@@ -93,6 +96,8 @@ class Player ( Thread ):
         if m.skip:
           m.skip(t_diff)
       sleep(self._sleep)
+
+    sleep(2)
     audio.kill()
 
   def stop(self):
