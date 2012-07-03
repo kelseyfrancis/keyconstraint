@@ -8,15 +8,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.google.common.base.Function;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import keyconstraint.identifykey.ml.classifier.Classifier;
 import keyconstraint.identifykey.ml.feature.Feature;
+import keyconstraint.identifykey.ml.feature.FeatureVisitor;
+import keyconstraint.identifykey.ml.feature.NominalFeature;
+import keyconstraint.identifykey.ml.feature.NumericFeature;
+import keyconstraint.identifykey.ml.feature.StringFeature;
 import keyconstraint.identifykey.ml.label.Label;
 import keyconstraint.identifykey.ml.label.NominalLabel;
 import weka.core.Attribute;
@@ -29,23 +37,71 @@ import weka.filters.supervised.attribute.Discretize;
 
 public class WekaClassifier implements Classifier {
 
-    private final transient File arffData;
+    private final transient File arffFile;
 
     protected final transient Instances instances;
 
     private weka.classifiers.Classifier wekaClassifier;
     private WekaClassifierType wekaClassifierType;
 
-    public WekaClassifier(File arffData, WekaClassifierType wekaClassifierType) {
-        this.arffData = arffData;
+    public WekaClassifier(WekaClassifierType wekaClassifierType, File arffFile) {
+        this(wekaClassifierType, arffFile, null, null, null);
+    }
+
+    public WekaClassifier(WekaClassifierType wekaClassifierType,
+                          File arffFile,
+                          String relationName,
+                          Iterable<Feature> attributes,
+                          NominalFeature classAttribute) {
+        this.arffFile = arffFile;
         this.wekaClassifierType = wekaClassifierType;
         wekaClassifier = newClassifier();
 
-        Instances instances = buildInstances(arffData);
-        if (wekaClassifierType != null && wekaClassifierType.isRequiresDiscrete()) {
-            instances = discretize(instances);
+        if (!arffFile.exists() && relationName != null && attributes != null && classAttribute != null) {
+            instances = buildInstances(relationName, attributes, classAttribute);
+            try {
+                writeArffFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            instances = buildInstances(arffFile);
         }
-        this.instances = instances;
+    }
+
+    private static Instances buildInstances(String relationName,
+                                            Iterable<Feature> attributes,
+                                            NominalFeature classAttribute) {
+        ArrayList<Attribute> attrs = toAttributes(Iterables.concat(attributes, Arrays.asList(classAttribute)));
+
+        Instances instances = new Instances(relationName, attrs, 10);
+        instances.setClassIndex(instances.numAttributes() - 1); // last attr is the class attr
+        return instances;
+    }
+
+    private static ArrayList<Attribute> toAttributes(Iterable<Feature> attributes) {
+        final FeatureVisitor<Attribute> visitor = new FeatureVisitor<Attribute>() {
+            @Override
+            public Attribute visit(NumericFeature feature) {
+                return new Attribute(feature.getName());
+            }
+
+            @Override
+            public Attribute visit(StringFeature feature) {
+                return new Attribute(feature.getName(), (List<String>) null);
+            }
+
+            @Override
+            public Attribute visit(NominalFeature feature) {
+                return new Attribute(feature.getName(), feature.getAllowedValues());
+            }
+        };
+        return Lists.newArrayList(Iterables.transform(attributes, new Function<Feature, Attribute>() {
+            @Override
+            public Attribute apply(Feature feature) {
+                return feature.acceptVisitor(visitor);
+            }
+        }));
     }
 
     protected weka.classifiers.Classifier newClassifier() {
@@ -97,9 +153,11 @@ public class WekaClassifier implements Classifier {
 
     @Override
     public List<Label> classify(List<Feature> features) {
+        Instances instances = this.instances;
         Instance instance = newInstance(features);
 
         if (wekaClassifierType.isRequiresDiscrete()) {
+            instances = discretize(instances);
             instance = discretize(instance);
         }
 
@@ -168,37 +226,55 @@ public class WekaClassifier implements Classifier {
         Instance instance = newInstance(features);
         instance.setClassValue(labelValue);
         instances.add(instance);
-
-        try {
-            writeArffData(new FileOutputStream(arffData));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private Instance newInstance(Iterable<Feature> features) {
-        DenseInstance instance = new DenseInstance(instances.numAttributes());
+        final DenseInstance instance = new DenseInstance(instances.numAttributes());
         instance.setDataset(instances);
 
         for (Feature feature : features) {
             // TODO add by index instead?
-            Attribute attribute = instances.attribute(feature.getName());
+            final Attribute attribute = instances.attribute(feature.getName());
             if (attribute == null) {
                 continue;
             }
 
-            if (feature.isNumeric()) {
-                instance.setValue(attribute, feature.getNumericValue());
-            } else if (feature.isString()) {
-                instance.setValue(attribute, feature.getStringValue());
-            } else if (feature.isMissing()) {
-                instance.setMissing(attribute);
-            } else {
-                throw new IllegalStateException("Invalid feature: " + feature);
-            }
+            FeatureVisitor<Void> visitor = new FeatureVisitor<Void>() {
+                @Override
+                public Void visit(NumericFeature feature) {
+                    Double value = feature.getValue();
+                    if (value == null) {
+                        instance.setMissing(attribute);
+                    } else {
+                        instance.setValue(attribute, value);
+                    }
+                    return null;
+                }
+
+                @Override
+                public Void visit(StringFeature feature) {
+                    String value = feature.getValue();
+                    if (value == null) {
+                        instance.setMissing(attribute);
+                    } else {
+                        instance.setValue(attribute, value);
+                    }
+                    return null;
+                }
+
+                @Override
+                public Void visit(NominalFeature feature) {
+                    return visit((StringFeature) feature);
+                }
+            };
+            feature.acceptVisitor(visitor);
 
         }
         return instance;
+    }
+
+    public void writeArffFile() throws IOException {
+        writeArffData(new FileOutputStream(arffFile));
     }
 
     public void writeArffData(OutputStream out) throws IOException {
