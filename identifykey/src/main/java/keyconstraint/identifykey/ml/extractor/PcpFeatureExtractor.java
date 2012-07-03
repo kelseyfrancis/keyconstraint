@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
@@ -14,6 +15,7 @@ import keyconstraint.identifykey.audio.analyzer.window.WindowFunctions;
 import keyconstraint.identifykey.audio.mixer.StereoToMonoMixer;
 import keyconstraint.identifykey.feature.PitchClassProfile;
 import keyconstraint.identifykey.ml.feature.Feature;
+import keyconstraint.identifykey.ml.feature.NumericFeature;
 
 public class PcpFeatureExtractor implements FeatureExtractor {
     @Override
@@ -33,8 +35,21 @@ public class PcpFeatureExtractor implements FeatureExtractor {
         List<Feature> features = Lists.newArrayList();
         for (Map.Entry<String, Double> entry :
                 Iterables.concat(pcp.getPitchDistByNote().entrySet(), pcp.getPitchDistByOctaveByNote().entrySet())) {
-            features.add(new Feature(entry.getKey(), entry.getValue()));
+            features.add(new NumericFeature(entry.getKey(), entry.getValue()));
         }
         return features;
+    }
+
+    @Override
+    public List<Feature> getAttributes() {
+        return ImmutableList.copyOf(
+                Iterables.transform(
+                        Iterables.concat(PitchClassProfile.allNotes(), PitchClassProfile.allNotesWithOctave()),
+                        new Function<String, Feature>() {
+                            @Override
+                            public Feature apply(String note) {
+                                return new NumericFeature(note, null);
+                            }
+                        }));
     }
 }

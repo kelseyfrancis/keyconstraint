@@ -8,4 +8,6 @@ import keyconstraint.identifykey.ml.feature.Feature;
 public interface FeatureExtractor {
 
     List<Feature> extractFeatures(Audio audio);
+
+    List<Feature> getAttributes();
 }

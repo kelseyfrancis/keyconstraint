@@ -8,6 +8,7 @@ import java.util.Map;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
 import keyconstraint.identifykey.audio.analyzer.Frame;
@@ -29,12 +30,12 @@ public class PitchClassProfile {
     private static final String[] notes = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
     private static final int semitonesPerOctave = 12;
+    private static final int octaves = 11;
 
     private final double[] pitchDistByOctave;
     private final double[] pitchDist;
 
     public PitchClassProfile(Spectrum spectrum) {
-        int octaves = 11;
         pitchDistByOctave = new double[octaves * semitonesPerOctave]; // TODO allow more than one bin per semitone?
         pitchDist = new double[semitonesPerOctave];
         int numBins = spectrum.getNumBins();
@@ -60,8 +61,25 @@ public class PitchClassProfile {
         return notes[pitchClass % semitonesPerOctave];
     }
 
+    public static List<String> allNotes() {
+        List<String> notes = Lists.newArrayListWithCapacity(semitonesPerOctave);
+        for (int i = 0; i < semitonesPerOctave; ++i) {
+            notes.add(noteForPitchClass(i));
+        }
+        return notes;
+    }
+
     private static String noteWithOctaveForPitchClass(int pitchClass) {
         return noteForPitchClass(pitchClass) + ((pitchClass / semitonesPerOctave) - 1);
+    }
+
+    public static List<String> allNotesWithOctave() {
+        int numNotes = semitonesPerOctave * octaves;
+        List<String> notes = Lists.newArrayListWithCapacity(numNotes);
+        for (int i = 0; i < numNotes; ++i) {
+            notes.add(noteWithOctaveForPitchClass(i));
+        }
+        return notes;
     }
 
     public double[] getPitchDistByOctave() {
