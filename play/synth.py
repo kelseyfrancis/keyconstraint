@@ -49,6 +49,7 @@ class Context:
   def interval(*args, **kwargs): return Interval(*args, **kwargs)
   def am(*args, **kwargs): return AmpMod(*args, **kwargs)
   def adsr(*args, **kwargs): return ADSR(*args, **kwargs)
+  def irfilter(*args, **kwargs): return LinearFilter(*args, **kwargs)
 
 class Player ( Thread ):
 
@@ -84,6 +85,23 @@ class Player ( Thread ):
 
   def stop(self):
     self._halt = True
+
+class LinearFilter:
+
+  def __init__(self, context, coefficients, module):
+    self._coefficients = np.array(coefficients)
+    self._samples = np.zeros(self._coefficients.shape)
+    self._module = module
+
+  def next(self, t):
+    x = np.dot(self._coefficients.ravel(), self._samples.ravel())
+    np.roll(self._samples, 1)
+    self._samples[0][0] = self._module.next(t)
+    self._samples[1][0] = x
+    return x
+
+  def liveness(self):
+    return self._module.liveness()
 
 class Addition:
 
