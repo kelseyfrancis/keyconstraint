@@ -9,7 +9,8 @@ def beep(c, n, i):
   x = c.triangle(freq = n.frequency(), noise = .02)
   x = c.am(carrier = x, modulator = c.sine(freq = 2, amp=0.3, base=1))
   x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp=.05, noise=.01))
-  x = c.am(x, c.adsr(.05, .05, .2, .48))
+  x = c.am(x, c.adsr(.05, .05, .2, .4))
+  x = c.table(module = x)
   x = c.interval(x, i * .5)
   return x
 

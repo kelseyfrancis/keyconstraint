@@ -1,5 +1,5 @@
 import itertools
-from math import pi, sin
+from math import pi, sin, floor
 import numpy as np
 import random
 import struct
@@ -50,6 +50,7 @@ class Context:
   def am(*args, **kwargs): return AmpMod(*args, **kwargs)
   def adsr(*args, **kwargs): return ADSR(*args, **kwargs)
   def irfilter(*args, **kwargs): return LinearFilter(*args, **kwargs)
+  def table(*args, **kwargs): return WaveTable(*args, **kwargs)
 
 class Player ( Thread ):
 
@@ -85,6 +86,26 @@ class Player ( Thread ):
 
   def stop(self):
     self._halt = True
+
+class WaveTable:
+
+  def __init__(self, context, module, oversample = 1.):
+    self._i = 0.
+    self._table = np.array([])
+    while module.liveness() == 'live':
+      self._table = np.concatenate([self._table, np.array([ module.next(1.) for i in range(1000) ])])
+
+  def next(self, t):
+    if self._i is None:
+      return 0
+    x = self._table[floor(self._i)]
+    self._i += t
+    if self._i >= len(self._table):
+      self._i = None
+    return x
+
+  def liveness(self):
+    return 'dead' if self._i is None else 'live'
 
 class LinearFilter:
 
