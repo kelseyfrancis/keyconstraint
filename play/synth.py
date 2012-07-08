@@ -14,6 +14,12 @@ def sine_table(x):
   return sin(2*pi*x)
   return _sine_table[round(_sine_table_size * x)]
 
+def triangle(x):
+  return (4. * x - 1) if x < .5 else (-2. * x + 1)
+
+def square(x):
+  return -1 if x < .5 else 1
+
 class Context:
 
   def __init__(self):
@@ -35,9 +41,10 @@ class Context:
     return self._sample_rate
 
   def add(*args, **kwargs): return Addition(*args, **kwargs)
-  def sine(*args, **kwargs): return Sine(*args, **kwargs)
-  def triangle(*args, **kwargs): return Triangle(*args, **kwargs)
-  def square(*args, **kwargs): return Square(*args, **kwargs)
+  def osc(*args, **kwargs): return Oscillator(*args, **kwargs)
+  def sine(*args, **kwargs): return Oscillator(*args, waveform=sine_table, **kwargs)
+  def triangle(*args, **kwargs): return Oscillator(*args, waveform=triangle, **kwargs)
+  def square(*args, **kwargs): return Oscillator(*args, waveform=square, **kwargs)
   def fm(*args, **kwargs): return FreqMod(*args, **kwargs)
   def interval(*args, **kwargs): return Interval(*args, **kwargs)
   def am(*args, **kwargs): return AmpMod(*args, **kwargs)
@@ -110,9 +117,10 @@ class Addition:
     if len(m['sleep']) != 0: return 'sleep'
     return 'dead'
 
-class Sine:
+class Oscillator:
 
-  def __init__(self, context, freq=None, amp=1, noise=0, base=0):
+  def __init__(self, context, waveform, freq, amp=1, noise=0, base=0):
+    self._waveform = waveform
     self._context = context
     self._freq = freq
     self._amp = amp
@@ -122,53 +130,10 @@ class Sine:
 
   def next(self, t):
     self._phase = ( self._phase + ( t * self._freq / self._context.sample_rate() ) ) % 1.
-    x = sine_table( self._phase )
+    x = self._waveform( self._phase )
     if self._noise != 0:
       x = x + random.gauss(0, self._noise)
     return x * self._amp + self._base
-
-  def liveness(self):
-    return 'live'
-
-class Triangle:
-
-  def __init__(self, context, freq=None, amp=1, noise=0):
-    self._context = context
-    self._freq = freq
-    self._amp = amp
-    self._phase = 0
-    self._noise = noise
-
-  def next(self, t):
-    self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
-    p = self._phase
-    if self._phase < 1:
-      x = 2. * p - 1
-    else:
-      x = -2. * p + 1
-    if self._noise != 0:
-      x = x + random.gauss(0, self._noise)
-    x = x * self._amp
-    return x
-
-  def liveness(self):
-    return 'live'
-
-class Square:
-
-  def __init__(self, context, freq=None, amp=1, noise=0):
-    self._context = context
-    self._freq = freq
-    self._amp = amp
-    self._phase = 0
-    self._noise = noise
-
-  def next(self, t):
-    self._phase = ( self._phase + ( 2 * t * self._freq / self._context.sample_rate() ) ) % 2.
-    x = -1 if self._phase < 1 else 1
-    if self._noise != 0:
-      x = x + random.gauss(0, self._noise)
-    return x
 
   def liveness(self):
     return 'live'
