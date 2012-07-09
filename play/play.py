@@ -38,14 +38,15 @@ def scale(c, key):
 
 class MidiListener(Thread):
 
-  def __init__(self, on_note):
+  def __init__(self, on_note, name):
     super(MidiListener, self).__init__()
     self._halt = False
     self._on_note = on_note
+    self._name = name
 
   def run(self):
     midi.init()
-    i = [ i for i in range(midi.get_count()) if 'KeyRig' in midi.get_device_info(i)[1] ][0]
+    i = [ i for i in range(midi.get_count()) if self._name in midi.get_device_info(i)[1] ][0]
     i = midi.Input(i)
     while not self._halt:
       e = i.read(1)
@@ -70,7 +71,7 @@ def _main():
     def on_note(note):
       print(note)
       a.add_module(copy(beep(c, note)))
-    t = MidiListener(on_note)
+    t = MidiListener(on_note, name=midi_name)
     t.start()
   else:
     t = None
