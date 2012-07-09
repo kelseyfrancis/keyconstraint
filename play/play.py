@@ -60,7 +60,7 @@ class MidiListener(Thread):
   def stop(self):
     self._halt = True
 
-if __name__ == '__main__':
+def _main():
   key = music.key(sys.argv[1])
   midi_name = sys.argv[2] if len(sys.argv) > 2 else None
   c = synth.Context()
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     a = c.add(keep_alive = True)
     c.start(a)
     def on_note(note):
+      print(note)
       a.add_module(copy(beep(c, note)))
     t = MidiListener(on_note)
     t.start()
@@ -77,4 +78,7 @@ if __name__ == '__main__':
   sys.stdin.readline()
   if t: t.stop()
   c.stop()
+
+if __name__ == '__main__':
+  _main()
 
