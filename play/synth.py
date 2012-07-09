@@ -1,6 +1,6 @@
 import itertools
 import math
-from math import pi, floor
+from math import pi
 import numpy as np
 import random
 import struct
@@ -104,22 +104,18 @@ class WaveTable:
       while module.liveness() == 'live':
         self._table = np.hstack((self._table, module.next(t, 1000)))
 
-  def _next_index(self, t):
-    if self._i is None:
-      return None
-    i = floor(self._i)
-    self._i += t * self._oversample
-    if self._i >= len(self._table):
-      self._i = None
-    return i
-
   def next(self, t, n):
-    if self._i is None:
-      return np.zeros(n)
-    indices = np.array([ self._next_index(t) for i in range(n) ])
-    indices = [ i for i in indices if i is not None ]
+    def gen_indices():
+      while self._i is not None:
+        j = int(self._i)
+        self._i += t * self._oversample
+        if self._i >= len(self._table):
+          self._i = None
+        yield j
+    indices = np.array(list(itertools.islice(gen_indices(), 0, n)))
     x = np.hstack((self._table[indices], np.zeros(n - len(indices))))
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
@@ -145,6 +141,7 @@ class LinearFilter:
   def next(self, t, n):
     x = np.array([ self._next(t) for i in range(n) ])
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
@@ -172,6 +169,7 @@ class Addition:
       return np.zeros(n)
     x = sum([ m.next(t, n) for m in live ])
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
@@ -193,19 +191,22 @@ class Oscillator:
     self._noise = noise
     self._base = base
 
-  def _next(self, t):
-    self._phase += 1. * t * self._freq / self._context.sample_rate()
-    self._phase %= 1.
-    x = self._waveform( self._phase )
-    if self._noise != 0:
-      x = x + random.gauss(0, self._noise)
-    return x
-
   def next(self, t, n):
-    x = np.array([ self._next(t) for i in range(n) ])
+
+    def gen():
+      while True:
+        self._phase += 1. * t * self._freq / self._context.sample_rate()
+        self._phase %= 1.
+        x = self._waveform( self._phase )
+        yield x
+
+    x = np.array(list(itertools.islice(gen(), 0, n)))
+    if self._noise != 0:
+      x += np.array([ random.gauss(0, self._noise) for i in range(n) ])
     x *= self._amp
     x += self._base
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
@@ -222,6 +223,7 @@ class FreqMod:
     x = np.array([ self._carrier.next(t + t * m[i] / 2, 1)[0] for i in range(n) ])
     # todo modify next() implementations so t can be an array
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
@@ -252,6 +254,7 @@ class Interval:
   def next(self, t, n):
     x = np.array([ self._next(t) for i in range(n) ])
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def skip(self, t):
@@ -275,6 +278,7 @@ class AmpMod:
     else:
       x = self._carrier.next(t, n) * self._modulator.next(1, n)
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
@@ -326,6 +330,7 @@ class ADSR:
   def next(self, t, n):
     x = np.array([ self._next(t) for i in range(n) ])
     assert len(x.shape) == 1
+    assert len(x) == n
     return x
 
   def liveness(self):
