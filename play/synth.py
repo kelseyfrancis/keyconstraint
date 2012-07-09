@@ -52,14 +52,14 @@ class Context:
   def irfilter(*args, **kwargs): return LinearFilter(*args, **kwargs)
   def table(*args, **kwargs): return WaveTable(*args, **kwargs)
 
-class Player ( Thread ):
+class Player(Thread):
 
   def __init__(self, context):
     super(Player, self).__init__()
     self._context = context
     self._halt = False
-    self._buffer_ahead = 0.005
-    self._sleep = 0.001
+    self._buffer_ahead = 0.0002
+    self._sleep = 0.0001
 
   def run(self):
     c = self._context
@@ -70,18 +70,20 @@ class Player ( Thread ):
     intensity_shift = 2**15
     h = 0
     m = self._module
+    x = 0
     while not self._halt:
       now = time()
       h = (h + 1) if m.liveness() == 'dead' else 0
       if h > 5: break
       while (t < now + self._buffer_ahead):
         t = t + t_inc
+        zero = x == 0
         x = m.next(t = 1.)
+        if zero and x != 0:
+          print('#')
         s = int(x * 100) + intensity_shift
         audio.stdin.write(struct.pack('<H', s))
       sleep(self._sleep)
-
-    sleep(2)
     audio.kill()
 
   def stop(self):
@@ -89,23 +91,30 @@ class Player ( Thread ):
 
 class WaveTable:
 
-  def __init__(self, context, module, oversample = 1.):
+  def __init__(self, context, module = None, samples = None, oversample = 1.):
+    self._context = context
     self._i = 0.
-    self._table = np.array([])
-    while module.liveness() == 'live':
-      self._table = np.concatenate([self._table, np.array([ module.next(1.) for i in range(1000) ])])
+    self._table = np.array([] if samples is None else samples)
+    self._oversample = oversample
+    if samples is None:
+      while module.liveness() == 'live':
+        t = 1. / oversample
+        self._table = np.concatenate([self._table, np.array([ module.next(t) for i in range(1000) ])])
 
   def next(self, t):
     if self._i is None:
       return 0
     x = self._table[floor(self._i)]
-    self._i += t
+    self._i += t * self._oversample
     if self._i >= len(self._table):
       self._i = None
     return x
 
   def liveness(self):
     return 'dead' if self._i is None else 'live'
+
+  def __copy__(self):
+    return WaveTable(self._context, samples = self._table, oversample = self._oversample)
 
 class LinearFilter:
 
@@ -126,9 +135,10 @@ class LinearFilter:
 
 class Addition:
 
-  def __init__(self, context, modules=None):
+  def __init__(self, context, modules=None, keep_alive=False):
     self._modules = modules if modules else []
     self._live_modules_check = 0
+    self._keep_alive = keep_alive
 
   def add_module(self, module):
     self._modules.append(module)
@@ -151,6 +161,8 @@ class Addition:
     return sum([ m.next(t) for m in self.live_modules() ])
 
   def liveness(self):
+    if self._keep_alive:
+      return 'live'
     m = self.modules()
     if len(m['live']) != 0: return 'live'
     if len(m['sleep']) != 0: return 'sleep'
@@ -195,7 +207,7 @@ class FreqMod:
 
 class Interval:
 
-  def __init__(self, context, module, delay_seconds=0, duration_seconds=None):
+  def __init__(self, context, module=None, delay_seconds=0, duration_seconds=None):
     self._module = module
     self._delay_remaining = round(context.sample_rate() * delay_seconds)
     self._play_remaining = None if duration_seconds is None else round(context.sample_rate() * duration_seconds)
@@ -205,10 +217,10 @@ class Interval:
       self._delay_remaining = self._delay_remaining - 1
       return 0
     if self._play_remaining is None:
-      return self._module.next(t)
+      return self._module.next(t) if self._module else 0
     if self._play_remaining != 0:
       self._play_remaining = self._play_remaining - 1
-      return self._module.next(t)
+      return self._module.next(t) if self._module else 0
     return 0
 
   def skip(self, t):
@@ -216,7 +228,8 @@ class Interval:
 
   def liveness(self):
     if self._delay_remaining != 0: return 'sleep'
-    if self._play_remaining is None or self._play_remaining != 0: return self._module.liveness()
+    if self._play_remaining is None or self._play_remaining != 0:
+      return self._module.liveness() if self._module else 'dead'
     return 'dead'
 
 class AmpMod:

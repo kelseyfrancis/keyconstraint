@@ -18,6 +18,9 @@ def frequency(x):
 def notes(key, octave, start=None, step=1):
   return Key.get(key).notes(octave, start=start, step=step)
 
+def midi_note(x):
+  return Note.from_midi(x)
+
 class NoteCategory:
 
   _letters = list('C-D-EF-G-A-B')
@@ -41,6 +44,15 @@ class NoteCategory:
   @staticmethod
   def parse(x):
     return NoteCategory(x)
+
+  @staticmethod
+  def from_midi(x):
+    x = x % 12
+    name = NoteCategory._letters[x]
+    if name == '-':
+      x -= 1
+      name = NoteCategory._letters[x] + '#'
+    return NoteCategory(name)
 
   """
   Parameters:
@@ -89,6 +101,10 @@ class Note:
   @staticmethod
   def parse(x):
     return Note( category = x[0:-1], octave = int(x[-1:]) )
+
+  @staticmethod
+  def from_midi(x):
+    return Note(category = NoteCategory.from_midi(x), octave = x / 12)
 
   """
   Parameters:
