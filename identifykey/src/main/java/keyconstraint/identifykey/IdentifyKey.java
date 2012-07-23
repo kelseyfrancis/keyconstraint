@@ -1,13 +1,11 @@
 package keyconstraint.identifykey;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-
+import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
+import keyconstraint.identifykey.audio.cuesheet.CueSheet;
+import keyconstraint.identifykey.audio.cuesheet.Track;
 import keyconstraint.identifykey.ml.classifier.weka.WekaClassifier;
 import keyconstraint.identifykey.ml.classifier.weka.WekaClassifierType;
 import keyconstraint.identifykey.ml.extractor.FeatureExtractor;
@@ -19,6 +17,11 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 import static net.sourceforge.argparse4j.impl.Arguments.storeTrue;
 
@@ -72,36 +75,71 @@ public class IdentifyKey {
         for (String filename : ns.<String>getList("file")) {
             if (verbose) System.out.printf("Reading %s...\n", filename);
             File file = new File(filename);
-            Audio in = new WaveFileAudio(file);
 
-            if (verbose) System.out.println("Extracting features...");
-            List<Feature> features = extractor.extractFeatures(in);
+            List<Supplier<Audio>> tracks = tracks(file);
+            for (Supplier<Audio> track : tracks) {
+                Audio in = track.get();
 
-            if (label != null) {
-                if (!keys.contains(label)) {
-                    System.err.printf("Invalid label: '%s'\n", label);
-                    System.exit(1);
-                    return;
-                }
-                if (verbose) System.out.printf("Labeling as '%s'...\n", label);
-                classifier.label(features, new NominalLabel(keyAttribute, label));
+                if (verbose) System.out.printf("Extracting features from `%s'...\n", in.getTitle());
+                List<Feature> features = extractor.extractFeatures(in);
 
-                if (verbose) System.out.println("Saving labels...");
-                classifier.writeArffFile();
+                if (label != null) {
+                    if (!keys.contains(label)) {
+                        System.err.printf("Invalid label: '%s'\n", label);
+                        System.exit(1);
+                        return;
+                    }
+                    if (verbose) System.out.printf("Labeling as '%s'...\n", label);
+                    classifier.label(features, new NominalLabel(keyAttribute, label));
 
-                if (verbose) System.out.println("Done.");
-            } else {
-                classifier.train();
-                NominalLabel detectedLabel = (NominalLabel) classifier.classify(features).get(0);
-                String detectedKey = detectedLabel.getValue();
-                double prob = detectedLabel.getProbability();
-                if (verbose) {
-                    System.out.printf("Detected key of '%s' with probability %.4f.\n", detectedKey, prob);
+                    if (verbose) System.out.println("Saving labels...");
+                    classifier.writeArffFile();
+
+                    if (verbose) System.out.println("Done.");
                 } else {
-                    System.out.println(detectedKey);
+                    classifier.train();
+                    NominalLabel detectedLabel = (NominalLabel) classifier.classify(features).get(0);
+                    String detectedKey = detectedLabel.getValue();
+                    double prob = detectedLabel.getProbability();
+                    if (verbose) {
+                        System.out.printf("Detected key of '%s' with probability %.4f.\n", detectedKey, prob);
+                    } else {
+                        System.out.println(detectedKey);
+                    }
                 }
             }
         }
+    }
+
+    private static List<Supplier<Audio>> tracks(final File file) throws IOException {
+        List<Supplier<Audio>> audio = Lists.newArrayList();
+        if (file.getName().toLowerCase().endsWith(".cue")) {
+            CueSheet cueSheet = new CueSheet(file);
+            for (final Track track : cueSheet.getTracks()) {
+                audio.add(new Supplier<Audio>() {
+                    @Override
+                    public Audio get() {
+                        try {
+                            return track.getAudio();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+            }
+        } else {
+            audio.add(new Supplier<Audio>() {
+                @Override
+                public Audio get() {
+                    try {
+                        return new WaveFileAudio(file);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        }
+        return audio;
     }
 
     private static NominalFeature keyAttribute() {
