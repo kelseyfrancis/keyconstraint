@@ -65,7 +65,7 @@ class Player(Thread):
     c = self._context
     audio = c.open()
     out = audio.stdin
-    intensity_shift = 2**15
+    intensity_shift = 2**14
     h = 0
     m = self._module
     buffer_size = self._context.buffer_size()
@@ -81,7 +81,7 @@ class Player(Thread):
       if t < time():
         t += buffer_time
         samples = m.next(t = 1., n = buffer_size)
-        samples = [ s * 100. + intensity_shift for s in samples ]
+        samples = [ s * 10000. + intensity_shift for s in samples ]
         out.write(struct.pack(pack_format, *samples))
         out.flush()
       else:
@@ -180,7 +180,7 @@ class Addition:
 
 class Oscillator:
 
-  def __init__(self, context, waveform, freq, amp=1., noise=0, base=0):
+  def __init__(self, context, waveform, freq, amp=1., noise=0, base=0, positive=False):
     self._waveform = waveform
     self._context = context
     self._freq = freq
@@ -188,6 +188,7 @@ class Oscillator:
     self._phase = 0
     self._noise = noise
     self._base = base
+    self._positive = positive
 
   def next(self, t, n):
 
@@ -203,6 +204,7 @@ class Oscillator:
       x += np.array([ random.gauss(0, self._noise) for i in xrange(n) ])
     x *= self._amp
     x += self._base
+    if self._positive: x += (self._amp / 2.)
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -269,7 +271,9 @@ class AmpMod:
     if self.liveness() != 'live':
       x = np.zeros(n)
     else:
-      x = self._carrier.next(t, n) * self._modulator.next(1, n)
+      c = self._carrier.next(t, n)
+      m = self._modulator.next(1, n)
+      x = c * m
     assert len(x.shape) == 1
     assert len(x) == n
     return x
