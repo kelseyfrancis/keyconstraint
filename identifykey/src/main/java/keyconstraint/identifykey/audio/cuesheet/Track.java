@@ -1,9 +1,9 @@
 package keyconstraint.identifykey.audio.cuesheet;
 
+import java.io.IOException;
+
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
-
-import java.io.IOException;
 
 public class Track {
 
@@ -20,7 +20,7 @@ public class Track {
         return title;
     }
 
-    public Audio getAudio() throws IOException {
+    public Audio acquireAudio() throws IOException {
         WaveFileAudio audio = new WaveFileAudio(cueSheet.wavFile, startOffsetInSeconds, endOffsetInSeconds);
         audio.setTitle(title);
         return audio;

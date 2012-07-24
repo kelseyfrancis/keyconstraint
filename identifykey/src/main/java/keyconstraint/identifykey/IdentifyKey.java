@@ -1,6 +1,13 @@
 package keyconstraint.identifykey;
 
-import com.google.common.base.Supplier;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
+
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
@@ -18,11 +25,6 @@ import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-
 import static net.sourceforge.argparse4j.impl.Arguments.storeTrue;
 
 public class IdentifyKey {
@@ -32,6 +34,8 @@ public class IdentifyKey {
             "F#", "f#", "G", "g", "G#", "g#", "A", "a", "A#", "a#", "B", "b");
 
     private static final String keyAttribute = "key";
+
+    private static final Object askForLabelFlag = new Object();
 
     private IdentifyKey() {}
 
@@ -44,7 +48,9 @@ public class IdentifyKey {
                 .required(true)
                 .help("Labeled data set (ARFF)");
         parser.addArgument("--label")
-                .help("Label to affix to the given song");
+                .nargs("?")
+                .setConst(askForLabelFlag)
+                .help("Label to affix to the given song. If no label specified, ask for label.");
         parser.addArgument("file")
                 .nargs("*")
                 .help("Song to classify or label (WAV)");
@@ -70,26 +76,37 @@ public class IdentifyKey {
         List<Feature> attributes = Lists.newArrayList(extractor.getAttributes());
         WekaClassifier classifier = new WekaClassifier(WekaClassifierType.NNGE, labels, "IdentifyKey", attributes, keyAttribute());
 
-        String label = ns.getString("label");
+        boolean askForLabel = ns.get("label") == askForLabelFlag;
+        String label = askForLabel ? null : ns.getString("label");
 
         for (String filename : ns.<String>getList("file")) {
             if (verbose) System.out.printf("Reading %s...\n", filename);
             File file = new File(filename);
 
-            List<Supplier<Audio>> tracks = tracks(file);
-            for (Supplier<Audio> track : tracks) {
-                Audio in = track.get();
+            Iterable<AudioTrack> tracks = tracks(file);
+            for (AudioTrack track : tracks) {
+                if (verbose) System.out.printf("Loading audio for `%s'...\n", track.title);
+                Audio in = track.acquireAudio();
 
-                if (verbose) System.out.printf("Extracting features from `%s'...\n", in.getTitle());
+                if (verbose) System.out.println("Extracting features...");
                 List<Feature> features = extractor.extractFeatures(in);
 
-                if (label != null) {
-                    if (!keys.contains(label)) {
-                        System.err.printf("Invalid label: '%s'\n", label);
+                if (label != null || askForLabel) {
+                    if (askForLabel) {
+                        BufferedReader cons = new BufferedReader(new InputStreamReader(System.in));
+                        for (;;) {
+                            System.out.printf("Label for `%s': ", in.getTitle());
+                            label = cons.readLine();
+                            if (isValidLabel(label)) break;
+                            System.out.printf("Invalid label: `%s'\n", label);
+                        }
+                    }
+                    if (!isValidLabel(label)) {
+                        System.err.printf("Invalid label: `%s'\n", label);
                         System.exit(1);
                         return;
                     }
-                    if (verbose) System.out.printf("Labeling as '%s'...\n", label);
+                    if (verbose) System.out.printf("Labeling as `%s'...\n", label);
                     classifier.label(features, new NominalLabel(keyAttribute, label));
 
                     if (verbose) System.out.println("Saving labels...");
@@ -97,52 +114,66 @@ public class IdentifyKey {
 
                     if (verbose) System.out.println("Done.");
                 } else {
+                    if (verbose) System.out.println("Training classifier...");
                     classifier.train();
-                    NominalLabel detectedLabel = (NominalLabel) classifier.classify(features).get(0);
-                    String detectedKey = detectedLabel.getValue();
-                    double prob = detectedLabel.getProbability();
-                    if (verbose) {
-                        System.out.printf("Detected key of '%s' with probability %.4f.\n", detectedKey, prob);
-                    } else {
-                        System.out.println(detectedKey);
+                    if (verbose) System.out.println("Classifying...");
+
+                    @SuppressWarnings("unchecked")
+                    Iterable<NominalLabel> detectedLabels = (List<NominalLabel>) (List<?>) classifier.classify(features);
+
+                    List<String> output = Lists.newArrayList();
+                    for (NominalLabel detectedLabel : detectedLabels) {
+                        String detectedKey = detectedLabel.getValue();
+                        double prob = detectedLabel.getProbability();
+                        if (verbose) {
+                            System.out.printf("Detected key of `%s' in `%s' with probability %.4f.\n", detectedKey, in.getTitle(), prob);
+                        }
+                        output.add(String.format("%s (p=%.4f)", detectedKey, prob));
+                        System.out.println(Joiner.on(", ").join(output));
                     }
                 }
             }
         }
     }
 
-    private static List<Supplier<Audio>> tracks(final File file) throws IOException {
-        List<Supplier<Audio>> audio = Lists.newArrayList();
+    private static NominalFeature keyAttribute() {
+        return new NominalFeature(keyAttribute, null, keys);
+    }
+
+    private static boolean isValidLabel(String label) {
+        return label != null && keys.contains(label);
+    }
+
+    private static Iterable<AudioTrack> tracks(final File file) throws IOException {
+        List<AudioTrack> audio = Lists.newArrayList();
         if (file.getName().toLowerCase().endsWith(".cue")) {
             CueSheet cueSheet = new CueSheet(file);
             for (final Track track : cueSheet.getTracks()) {
-                audio.add(new Supplier<Audio>() {
+                audio.add(new AudioTrack(track.getTitle()) {
                     @Override
-                    public Audio get() {
-                        try {
-                            return track.getAudio();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
+                    protected Audio acquireAudio() throws IOException {
+                        return track.acquireAudio();
                     }
                 });
             }
         } else {
-            audio.add(new Supplier<Audio>() {
+            audio.add(new AudioTrack(file.getName().replaceFirst("(?i).wav$", "")) {
                 @Override
-                public Audio get() {
-                    try {
-                        return new WaveFileAudio(file);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                protected Audio acquireAudio() throws IOException {
+                    return new WaveFileAudio(file);
                 }
             });
         }
         return audio;
     }
 
-    private static NominalFeature keyAttribute() {
-        return new NominalFeature(keyAttribute, null, keys);
+    private abstract static class AudioTrack {
+        private final String title;
+
+        protected AudioTrack(String title) {
+            this.title = title;
+        }
+
+        protected abstract Audio acquireAudio() throws IOException;
     }
 }
