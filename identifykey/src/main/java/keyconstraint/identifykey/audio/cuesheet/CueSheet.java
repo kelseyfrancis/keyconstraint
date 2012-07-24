@@ -1,17 +1,18 @@
 package keyconstraint.identifykey.audio.cuesheet;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import keyconstraint.identifykey.audio.ArrayAudio;
-import keyconstraint.identifykey.audio.Audio;
-
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.annotation.Nullable;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import keyconstraint.identifykey.audio.ArrayAudio;
+import keyconstraint.identifykey.audio.Audio;
 
 import static java.lang.Integer.parseInt;
 
@@ -51,17 +52,13 @@ public class CueSheet {
                 track.startOffsetInSeconds = lastTrack == null ? Double.valueOf(0) : lastTrack.endOffsetInSeconds;
             } else if (token.equals("INDEX")) {
                 token = scanner.next();
-                if (token.equals("00")) {
-                    if (lastTrack != null) {
-                        lastTrack.endOffsetInSeconds = offsetInSeconds(scanner.next());
-                    }
-                } else if (token.equals("01")) {
+                if (token.equals("01")) {
                     if (track == null) {
                         throw new IOException("Invalid cue sheet; INDEX precedes TRACK");
                     }
                     track.startOffsetInSeconds = offsetInSeconds(scanner.next());
-                    if (lastTrack != null && lastTrack.endOffsetInSeconds == null) {
-                        lastTrack.endOffsetInSeconds = track.endOffsetInSeconds;
+                    if (lastTrack != null) {
+                        lastTrack.endOffsetInSeconds = track.startOffsetInSeconds;
                     }
                 }
             } else if (token.equals("TITLE")) {
