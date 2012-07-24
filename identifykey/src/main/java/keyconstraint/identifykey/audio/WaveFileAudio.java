@@ -1,12 +1,13 @@
 package keyconstraint.identifykey.audio;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+
+import javax.annotation.Nullable;
 
 /**
  * Format reference: https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
@@ -64,7 +65,7 @@ public class WaveFileAudio implements Audio {
         endOffsetInSamples = endOffsetInSamples - ((endOffsetInSamples - startOffsetInSamples) % channels);
         samples = new double[endOffsetInSamples - startOffsetInSamples];
 
-        channel.position(headerLengthInBytes + (startOffsetInSamples / bytesPerSample));
+        channel.position(headerLengthInBytes + (startOffsetInSamples * bytesPerSample));
 
         int bytesRead;
         int samplesRead = 0;
