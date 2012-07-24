@@ -17,8 +17,9 @@ import keyconstraint.identifykey.audio.analyzer.SpectrumAnalyzer;
 import keyconstraint.identifykey.audio.analyzer.window.WindowFunctions;
 import keyconstraint.identifykey.audio.mixer.StereoToMonoMixer;
 
+import static com.google.common.math.DoubleMath.log2;
+import static java.lang.Math.abs;
 import static java.lang.Math.round;
-import static keyconstraint.identifykey.audio.analyzer.Math2.log2;
 import static keyconstraint.identifykey.audio.analyzer.Math2.normalize;
 
 /**
@@ -54,7 +55,9 @@ public class PitchClassProfile {
     }
 
     private static int pitchClass(double freq) {
-        return 69 + (int) round(12 * log2(freq / 440.0));
+        double exact = 69 + (12 * log2(freq / 440.0));
+        int rounded = (int) round(exact);
+        return abs(exact - rounded) < 0.1 ? rounded : -1;
     }
 
     private static String noteForPitchClass(int pitchClass) {
