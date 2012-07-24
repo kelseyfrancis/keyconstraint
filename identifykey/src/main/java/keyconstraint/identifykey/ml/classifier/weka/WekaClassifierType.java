@@ -5,6 +5,7 @@ import weka.classifiers.bayes.AODE;
 import weka.classifiers.bayes.AODEsr;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.bayes.WAODE;
+import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.rules.NNge;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
@@ -57,6 +58,13 @@ public enum WekaClassifierType {
         @Override
         public Classifier newInstance() {
             return new NaiveBayes();
+        }
+    },
+
+    MULTILAYER_PERCEPTRON("Multilayer perceptron", "Multilayer perceptron") {
+        @Override
+        public Classifier newInstance() {
+            return new MultilayerPerceptron();
         }
     };
 

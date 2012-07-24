@@ -31,7 +31,7 @@ public class StereoToMonoMixer implements Mixer {
             mix[i] = (left + right) / 2.0;
         }
 
-        return new ArrayAudio(mix, in.getSampleRateInHz(), 1, in.getBitsPerSample());
+        return new ArrayAudio(mix, in.getSampleRateInHz(), 1, in.getBitsPerSample(), in.getTitle());
     }
 
     public static void main(String[] args) throws IOException {

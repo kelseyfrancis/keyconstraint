@@ -6,4 +6,5 @@ public interface Audio {
     int getSampleRateInHz();
     int getChannels();
     int getBitsPerSample();
+    String getTitle();
 }

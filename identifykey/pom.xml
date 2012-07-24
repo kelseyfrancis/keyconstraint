@@ -52,10 +52,10 @@
           </descriptorRefs>
           <archive>
             <manifest>
-              <mainClass>keyconstraint.identifykey.feature.PitchClassProfile</mainClass>
+              <mainClass>keyconstraint.identifykey.IdentifyKey</mainClass>
             </manifest>
           </archive>
-          <finalName>pcp</finalName>
+          <finalName>identifykey</finalName>
           <appendAssemblyId>false</appendAssemblyId>
         </configuration>
         <executions>

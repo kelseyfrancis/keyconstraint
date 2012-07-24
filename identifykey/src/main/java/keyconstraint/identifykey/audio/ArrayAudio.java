@@ -6,12 +6,14 @@ public class ArrayAudio implements Audio {
     private final int sampleRateInHz;
     private final int channels;
     private final int bitsPerSample;
+    private final String title;
 
-    public ArrayAudio(double[] samples, int sampleRateInHz, int channels, int bitsPerSample) {
+    public ArrayAudio(double[] samples, int sampleRateInHz, int channels, int bitsPerSample, String title) {
         this.samples = samples;
         this.sampleRateInHz = sampleRateInHz;
         this.channels = channels;
         this.bitsPerSample = bitsPerSample;
+        this.title = title;
     }
 
     @Override
@@ -32,5 +34,10 @@ public class ArrayAudio implements Audio {
     @Override
     public int getBitsPerSample() {
         return bitsPerSample;
+    }
+
+    @Override
+    public String getTitle() {
+        return title;
     }
 }
