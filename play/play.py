@@ -21,9 +21,9 @@ def memoize(obj):
 
 @memoize
 def beep(c, n):
-  x = c.triangle(freq = n.frequency(), noise = .02)
-  x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.3, base = 1))
-  x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp = .05, noise = .01))
+  x = c.triangle(freq = n.frequency(), noise = .0002, amp = 0.01)
+  x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.015, base = 0.1))
+  #x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp = .05, noise = .01))
   x = c.am(x, c.adsr(.01, .05, .2, .4))
   return c.table(module = x)
 
@@ -32,9 +32,11 @@ def scale_beeps(c, key):
   return list([ beep(c, n) for n in notes ])
 
 def scale(c, key):
-  x = c.add(list([ c.interval(beep, i * .5) for i, beep in enumerate(scale_beeps(c, key)) ]))
+  x = c.add(list([ c.interval(beep, i * .5) \
+    for i, beep in enumerate(scale_beeps(c, key)) ]))
   x.add_module(c.interval(delay_seconds = 7))
-  return c.irfilter(module = x, coefficients = [[.5,.5,.5,.5,.5],[0,0,0,0,0]])
+  #return x
+  return c.irfilter(module = x, coefficients = [.2, .1, .2, .8, 1, .8, .2, .1, .2])
 
 class MidiListener(Thread):
 
