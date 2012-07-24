@@ -66,6 +66,7 @@ class Player(Thread):
     audio = c.open()
     out = audio.stdin
     intensity_shift = 2**14
+    intensity_multiple = 2**12
     h = 0
     m = self._module
     buffer_size = self._context.buffer_size()
@@ -81,7 +82,7 @@ class Player(Thread):
       if t < time():
         t += buffer_time
         samples = m.next(t = 1., n = buffer_size)
-        samples = [ s * 10000. + intensity_shift for s in samples ]
+        samples = [ s * intensity_multiple + intensity_shift for s in samples ]
         out.write(struct.pack(pack_format, *samples))
         out.flush()
       else:

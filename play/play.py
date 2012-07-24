@@ -26,7 +26,7 @@ def beep(c, n):
     c.square(freq = 5 * n.frequency(), noise = .0002, amp = 0.3),
     c.triangle(freq = 3 * n.frequency(), noise = .0002, amp = 0.1),
   ])
-  x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.015, base = 0.1))
+  x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.15, base = 1))
   #x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp = .05, noise = .01))
   x = c.am(x, c.adsr(.01, .05, .2, 1.4))
   return c.table(module = x)
@@ -36,7 +36,7 @@ def scale_beeps(c, key):
   return list([ beep(c, n) for n in notes ])
 
 def scale(c, key):
-  x = c.add(list([ c.interval(beep, i * .5) \
+  x = c.add(list([ c.interval(beep, i * .2) \
     for i, beep in enumerate(scale_beeps(c, key)) ]))
   x.add_module(c.interval(delay_seconds = 7))
   return x
@@ -73,13 +73,14 @@ def _main():
   c = synth.Context()
   t = None
   #if True:
-  #  c.start(c.am(carrier=c.sine(freq=440), modulator=c.sine(freq=1, positive=True)))
+  #  c.start(c.am(carrier=c.triangle(freq=440), modulator=c.sine(freq=1, positive=True)))
   if midi_name:
     a = c.add(keep_alive = True)
     c.start(a)
     def on_note(note):
-      print(note)
-      a.add_module(copy(beep(c, note)))
+      shifted = note.key_shift('C', key)
+      print('%s -> %s' % (note, shifted))
+      a.add_module(copy(beep(c, shifted)))
     t = MidiListener(on_note, name=midi_name)
     t.start()
   else:
