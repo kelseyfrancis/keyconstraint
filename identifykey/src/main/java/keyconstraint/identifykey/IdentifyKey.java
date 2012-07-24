@@ -88,6 +88,8 @@ public class IdentifyKey {
         boolean askForLabel = ns.get("label") == askForLabelFlag;
         String label = askForLabel ? null : ns.getString("label");
 
+        boolean classifierTrained = false;
+
         for (String filename : ns.<String>getList("file")) {
             if (verbose) System.out.printf("Reading %s...\n", filename);
             File file = new File(filename);
@@ -129,23 +131,28 @@ public class IdentifyKey {
 
                     if (verbose) System.out.println("Done.");
                 } else {
-                    if (verbose) System.out.println("Training classifier...");
-                    classifier.train();
+                    if (!classifierTrained) {
+                        if (verbose) System.out.println("Training classifier...");
+                        classifier.train();
+                        classifierTrained = true;
+                    }
                     if (verbose) System.out.println("Classifying...");
 
                     @SuppressWarnings("unchecked")
-                    Iterable<NominalLabel> detectedLabels = (Iterable<NominalLabel>) (List<?>) classifier.classify(features);
+                    List<NominalLabel> detectedLabels = (List<NominalLabel>) (List<?>) classifier.classify(features);
 
                     List<String> output = Lists.newArrayList();
                     for (NominalLabel detectedLabel : detectedLabels) {
                         String detectedKey = detectedLabel.getValue();
                         double prob = detectedLabel.getProbability();
-                        if (verbose) {
-                            System.out.printf("Detected key of `%s' in `%s' with probability %.4f.\n", detectedKey, in.getTitle(), prob);
-                        }
                         output.add(String.format("%s (p=%.4f)", detectedKey, prob));
-                        System.out.println(Joiner.on(", ").join(output));
                     }
+                    if (verbose) {
+                        NominalLabel mostProbable = detectedLabels.get(0);
+                        System.out.printf("Detected key of `%s' in `%s' with probability %.4f.\n",
+                                mostProbable.getValue(), in.getTitle(), mostProbable.getProbability());
+                    }
+                    System.out.println(Joiner.on(", ").join(output));
                 }
             }
         }

@@ -214,16 +214,23 @@ public class WekaClassifier implements Classifier {
         List<ClassProbability> indexedDistribution = Lists.newArrayListWithCapacity(distribution.length);
         for (int i = 0; i < distribution.length; i++) {
             double probability = distribution[i];
-            indexedDistribution.add(new ClassProbability(i, probability));
+            if (probability > 0.0) {
+                indexedDistribution.add(new ClassProbability(i, probability));
+            }
         }
-        ClassProbability predictedClass = Collections.max(indexedDistribution);
+        Collections.sort(indexedDistribution, Collections.reverseOrder());
 
+        List<Label> labels = Lists.newArrayListWithCapacity(indexedDistribution.size());
         Attribute classAttribute = instances.classAttribute();
-        Label label = new NominalLabel(
-                classAttribute.name(),
-                classAttribute.value(predictedClass.index),
-                predictedClass.probability);
-        return ImmutableList.of(label);
+        for (ClassProbability predictedClass : indexedDistribution) {
+            Label label = new NominalLabel(
+                    classAttribute.name(),
+                    classAttribute.value(predictedClass.index),
+                    predictedClass.probability);
+            labels.add(label);
+        }
+
+        return ImmutableList.copyOf(labels);
     }
 
     private Instance discretize(Instance instance) {
