@@ -9,9 +9,18 @@ import sys
 from threading import Thread
 from time import sleep, time
 
-def sine(x): return math.sin(x * 2. * pi)
-def triangle(x): return (4. * x - 1) if x < .5 else (-2. * x + 1)
-def square(x): return -1 if x < .5 else 1
+def sine(x):
+  return np.sin(x * 2. * pi)
+def triangle(x):
+  return np.array(list([
+    (4. * i - 1) if i < .5 else (-2. * i + 1) \
+    for i in np.array(x)
+  ]))
+
+def square(x):
+  return np.array(list([
+    -1 if i < .5 else 1 for i in np.array(x)
+  ]))
 
 class Context:
 
@@ -26,14 +35,14 @@ class Context:
     print(command)
     return Popen(command.split(), stdin=PIPE)
 
-  def start(self, module): 
+  def start(self, module):
     self._player._module = module
     self._player.start()
-  
-  def stop(self): 
+
+  def stop(self):
     self._player.stop()
 
-  def sample_rate(self): 
+  def sample_rate(self):
     return self._sample_rate
 
   def buffer_time(self):
@@ -65,7 +74,8 @@ class Player(Thread):
     c = self._context
     audio = c.open()
     out = audio.stdin
-    intensity_shift = 2**15
+    intensity_shift = 2**14
+    intensity_multiple = 2**12
     h = 0
     m = self._module
     buffer_size = self._context.buffer_size()
@@ -81,7 +91,7 @@ class Player(Thread):
       if t < time():
         t += buffer_time
         samples = m.next(t = 1., n = buffer_size)
-        samples = [ s * 100 + intensity_shift for s in samples ]
+        samples = [ s * intensity_multiple + intensity_shift for s in samples ]
         out.write(struct.pack(pack_format, *samples))
         out.flush()
       else:
@@ -105,15 +115,28 @@ class WaveTable:
         self._table = np.hstack((self._table, module.next(t, 1000)))
 
   def next(self, t, n):
+
+    t = t * self._oversample
+
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
+
     def gen_indices():
+      i = 0
       while self._i is not None:
         j = int(self._i)
-        self._i += t * self._oversample
+        self._i += t[i]
         if self._i >= len(self._table):
           self._i = None
         yield j
-    indices = np.array(list(itertools.islice(gen_indices(), 0, n)))
+        i += 1
+        if i == n:
+          return
+
+    indices = np.array(list(gen_indices()))
     x = np.hstack((self._table[indices], np.zeros(n - len(indices))))
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -128,18 +151,16 @@ class LinearFilter:
 
   def __init__(self, context, coefficients, module):
     self._coefficients = np.array(coefficients)
-    self._samples = np.zeros(self._coefficients.shape)
+    self._samples = np.zeros(self._coefficients.shape[0] - 1)
     self._module = module
 
-  def _next(self, t):
-    x = np.dot(self._coefficients.ravel(), self._samples.ravel())
-    np.roll(self._samples, 1)
-    self._samples[0][0] = self._module.next(t)
-    self._samples[1][0] = x
-    return x
-
   def next(self, t, n):
-    x = np.array([ self._next(t) for i in range(n) ])
+
+    coefficients = self._coefficients
+    samples = np.concatenate([ self._samples, self._module.next(t, n) ])
+    x = np.convolve(samples, coefficients, 'valid')
+    self._samples = samples[-1 * (coefficients.shape[0] - 1):]
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -160,14 +181,20 @@ class Addition:
     self._modules = filter(lambda m : m.liveness() != 'dead', self._modules)
     return dict(list([ (liveness, list(filter(lambda m : m.liveness() == liveness, self._modules))) for liveness in ['live', 'sleep'] ]))
 
-  def live_modules(self):
-    return self.modules()['live']
-
   def next(self, t, n):
-    live = self.live_modules()
+
+    modules = self.modules()
+
+    sleep = modules['sleep']
+    [ m.skip(n) for m in sleep if m.skip ]
+
+    live = modules['live']
+
     if len(live) == 0:
       return np.zeros(n)
+
     x = sum([ m.next(t, n) for m in live ])
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -182,7 +209,7 @@ class Addition:
 
 class Oscillator:
 
-  def __init__(self, context, waveform, freq, amp=1, noise=0, base=0):
+  def __init__(self, context, waveform, freq, amp=1., noise=0, base=0, positive=False):
     self._waveform = waveform
     self._context = context
     self._freq = freq
@@ -190,21 +217,32 @@ class Oscillator:
     self._phase = 0
     self._noise = noise
     self._base = base
+    self._positive = positive
 
   def next(self, t, n):
 
-    def gen():
-      while True:
-        self._phase += 1. * t * self._freq / self._context.sample_rate()
-        self._phase %= 1.
-        x = self._waveform( self._phase )
-        yield x
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
 
-    x = np.array(list(itertools.islice(gen(), 0, n)))
+    def gen():
+      i = 0
+      while True:
+        self._phase += 1. * t[i] * self._freq / self._context.sample_rate()
+        self._phase %= 1.
+        yield self._phase
+        i += 1
+        if i == len(t):
+          return
+
+    phases = np.array(list(itertools.islice(gen(), 0, n)))
+    x = self._waveform(phases)
+
     if self._noise != 0:
-      x += np.array([ random.gauss(0, self._noise) for i in range(n) ])
+      x += np.array([ random.gauss(0, self._noise) for i in xrange(n) ])
     x *= self._amp
     x += self._base
+    if self._positive: x += (self._amp / 2.)
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -219,9 +257,16 @@ class FreqMod:
     self._modulator = modulator
 
   def next(self, t, n):
+
     m = self._modulator.next(t, n)
-    x = np.array([ self._carrier.next(t + t * m[i] / 2, 1)[0] for i in range(n) ])
-    # todo modify next() implementations so t can be an array
+
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
+
+    t = t + t * m / 2.
+    x = self._carrier.next(t, n)
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -240,29 +285,24 @@ class Interval:
     self._delay_remaining = round(context.sample_rate() * delay_seconds)
     self._play_remaining = None if duration_seconds is None else round(context.sample_rate() * duration_seconds)
 
-  def _next(self, t):
-    if self._delay_remaining != 0:
-      self._delay_remaining = self._delay_remaining - 1
-      return 0
-    if self._play_remaining is None:
-      return self._module.next(t) if self._module else 0
-    if self._play_remaining != 0:
-      self._play_remaining = self._play_remaining - 1
-      return self._module.next(t) if self._module else 0
-    return 0
-
   def next(self, t, n):
-    x = np.array([ self._next(t) for i in range(n) ])
-    assert len(x.shape) == 1
-    assert len(x) == n
-    return x
+    if self._delay_remaining > 0:
+      self._delay_remaining -= n
+      return np.zeros(n)
+    elif self._play_remaining is None:
+      return self._module.next(t, n) if self._module else np.zeros(n)
+    elif self._play_remaining > 0:
+      self._play_remaining -= n
+      return self._module.next(t, n) if self._module else np.zeros(n)
+    else:
+      return np.zeros(n)
 
-  def skip(self, t):
-    self._delay_remaining = max(0, self._delay_remaining - t)
+  def skip(self, n):
+    self._delay_remaining -= n
 
   def liveness(self):
-    if self._delay_remaining != 0: return 'sleep'
-    if self._play_remaining is None or self._play_remaining != 0:
+    if self._delay_remaining > 0: return 'sleep'
+    if self._play_remaining is None or self._play_remaining > 0:
       return self._module.liveness() if self._module else 'dead'
     return 'dead'
 
@@ -276,7 +316,9 @@ class AmpMod:
     if self.liveness() != 'live':
       x = np.zeros(n)
     else:
-      x = self._carrier.next(t, n) * self._modulator.next(1, n)
+      c = self._carrier.next(t, n)
+      m = self._modulator.next(1, n)
+      x = c * m
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -296,39 +338,45 @@ class ADSR:
     self._sustain_amp = .6
     self._section = 'a'
 
-  def _next(self, t):
-    d = self._duration
-    T = self._t + t
-    sa = self._sustain_amp
-    s = self._section
-    if s == 'a':
-      x = T / d[0]
-      if T > d[0]:
-        s = 'd'
-        T = 0
-    elif s == 'd':
-      x = sa + T * (1-sa) / d[1]
-      if T > d[1]:
-        s = 's'
-        T = 0
-    elif s == 's':
-      x = sa
-      if T > d[2]:
-        s = 'r'
-        T = 0
-    elif s == 'r':
-      x = sa - T * sa / d[3]
-      if T > d[3]:
-        s = None
-        T = 0
-    else:
-      x = 0
-    self._section = s
-    self._t = T
-    return x
-
   def next(self, t, n):
-    x = np.array([ self._next(t) for i in range(n) ])
+
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
+
+    def gen():
+      while True:
+        d = self._duration
+        T = self._t + t[0]
+        sa = self._sustain_amp
+        s = self._section
+        if s == 'a':
+          x = T / d[0]
+          if T > d[0]:
+            s = 'd'
+            T = 0
+        elif s == 'd':
+          x = sa + T * (1-sa) / d[1]
+          if T > d[1]:
+            s = 's'
+            T = 0
+        elif s == 's':
+          x = sa
+          if T > d[2]:
+            s = 'r'
+            T = 0
+        elif s == 'r':
+          x = sa - T * sa / d[3]
+          if T > d[3]:
+            s = None
+            T = 0
+        else:
+          x = 0
+        self._section = s
+        self._t = T
+        yield x
+
+    x = np.array(list(itertools.islice(gen(), 0, n)))
     assert len(x.shape) == 1
     assert len(x) == n
     return x
