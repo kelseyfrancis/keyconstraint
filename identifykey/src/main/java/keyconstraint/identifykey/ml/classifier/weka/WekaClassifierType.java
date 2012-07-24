@@ -1,14 +1,14 @@
 package keyconstraint.identifykey.ml.classifier.weka;
 
 import weka.classifiers.Classifier;
-import weka.classifiers.bayes.AODE;
-import weka.classifiers.bayes.AODEsr;
 import weka.classifiers.bayes.NaiveBayes;
-import weka.classifiers.bayes.WAODE;
 import weka.classifiers.functions.MultilayerPerceptron;
+import weka.classifiers.meta.MultiScheme;
+import weka.classifiers.meta.Vote;
 import weka.classifiers.rules.NNge;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
+import weka.core.SelectedTag;
 
 public enum WekaClassifierType {
 
@@ -22,7 +22,10 @@ public enum WekaClassifierType {
     NNGE("NNge", "Nearest-neighbor-like algorithm using non-nested generalized exemplars") {
         @Override
         public Classifier newInstance() {
-            return new NNge();
+            NNge c = new NNge();
+//            c.setNumAttemptsOfGeneOption(50);
+//            c.setNumFoldersMIOption(50);
+            return c;
         }
     },
 
@@ -30,27 +33,6 @@ public enum WekaClassifierType {
         @Override
         public Classifier newInstance() {
             return new RandomForest();
-        }
-    },
-
-    AODE("AODE", "Averaged One-Dependence Estimators", true) {
-        @Override
-        public Classifier newInstance() {
-            return new AODE();
-        }
-    },
-
-    AODE_SR("AODEsr", "Averaged One-Dependence Estimators with Subsumption Resolution", true) {
-        @Override
-        public Classifier newInstance() {
-            return new AODEsr();
-        }
-    },
-
-    WAODE("WAODE", "Weightily Averaged One-Dependence Estimators", true) {
-        @Override
-        public Classifier newInstance() {
-            return new WAODE();
         }
     },
 
@@ -64,7 +46,30 @@ public enum WekaClassifierType {
     MULTILAYER_PERCEPTRON("Multilayer perceptron", "Multilayer perceptron") {
         @Override
         public Classifier newInstance() {
-            return new MultilayerPerceptron();
+            MultilayerPerceptron c = new MultilayerPerceptron();
+            c.setTrainingTime(5000);
+            return c;
+        }
+    },
+
+    MULTI_SCHEME("Multi scheme", "Multi scheme") {
+        @Override
+        public Classifier newInstance() {
+            MultiScheme c = new MultiScheme();
+            c.setDebug(true);
+            c.setClassifiers(new Classifier[]{NNGE.newInstance(), MULTILAYER_PERCEPTRON.newInstance(), NAIVE_BAYES.newInstance()});
+            return c;
+        }
+    },
+
+    VOTE("Vote", "Vote") {
+        @Override
+        public Classifier newInstance() {
+            Vote c = new Vote();
+            c.setClassifiers(new Classifier[]{NNGE.newInstance(), MULTILAYER_PERCEPTRON.newInstance(), NAIVE_BAYES.newInstance(), RANDOM_FOREST.newInstance()});
+            c.setCombinationRule(new SelectedTag(Vote.MAJORITY_VOTING_RULE, Vote.TAGS_RULES));
+            c.setDebug(true);
+            return c;
         }
     };
 
