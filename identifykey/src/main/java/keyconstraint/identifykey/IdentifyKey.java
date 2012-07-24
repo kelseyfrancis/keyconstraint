@@ -15,8 +15,10 @@ import keyconstraint.identifykey.audio.cuesheet.CueSheet;
 import keyconstraint.identifykey.audio.cuesheet.Track;
 import keyconstraint.identifykey.ml.classifier.weka.WekaClassifier;
 import keyconstraint.identifykey.ml.classifier.weka.WekaClassifierType;
+import keyconstraint.identifykey.ml.extractor.CompositeFeatureExtractor;
 import keyconstraint.identifykey.ml.extractor.FeatureExtractor;
 import keyconstraint.identifykey.ml.extractor.PcpFeatureExtractor;
+import keyconstraint.identifykey.ml.extractor.TitleFeatureExtractor;
 import keyconstraint.identifykey.ml.feature.Feature;
 import keyconstraint.identifykey.ml.feature.NominalFeature;
 import keyconstraint.identifykey.ml.label.NominalLabel;
@@ -68,13 +70,19 @@ public class IdentifyKey {
 
         boolean verbose = ns.getBoolean("verbose");
 
-        FeatureExtractor extractor = new PcpFeatureExtractor();
+        TitleFeatureExtractor titleExtractor = new TitleFeatureExtractor();
+        FeatureExtractor extractor = new CompositeFeatureExtractor(
+                titleExtractor,
+                new PcpFeatureExtractor()
+        );
 
         String labelsFilename = ns.getString("labels");
         File labels = new File(labelsFilename);
 
         List<Feature> attributes = Lists.newArrayList(extractor.getAttributes());
-        WekaClassifier classifier = new WekaClassifier(WekaClassifierType.NNGE, labels, "IdentifyKey", attributes, keyAttribute());
+        List<Feature> metaDataAttributes = titleExtractor.getAttributes();
+        WekaClassifier classifier = new WekaClassifier(
+                WekaClassifierType.NNGE, labels, "IdentifyKey", attributes, keyAttribute(), metaDataAttributes);
 
         boolean askForLabel = ns.get("label") == askForLabelFlag;
         String label = askForLabel ? null : ns.getString("label");
@@ -119,7 +127,7 @@ public class IdentifyKey {
                     if (verbose) System.out.println("Classifying...");
 
                     @SuppressWarnings("unchecked")
-                    Iterable<NominalLabel> detectedLabels = (List<NominalLabel>) (List<?>) classifier.classify(features);
+                    Iterable<NominalLabel> detectedLabels = (Iterable<NominalLabel>) (List<?>) classifier.classify(features);
 
                     List<String> output = Lists.newArrayList();
                     for (NominalLabel detectedLabel : detectedLabels) {

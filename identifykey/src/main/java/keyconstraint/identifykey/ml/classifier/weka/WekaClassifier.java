@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -34,6 +36,7 @@ import weka.core.Instances;
 import weka.core.converters.ArffSaver;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.Discretize;
+import weka.filters.unsupervised.attribute.RemoveByName;
 
 public class WekaClassifier implements Classifier {
 
@@ -44,15 +47,18 @@ public class WekaClassifier implements Classifier {
     private weka.classifiers.Classifier wekaClassifier;
     private WekaClassifierType wekaClassifierType;
 
+    private final Iterable<Feature> metaDataAttributes;
+
     public WekaClassifier(WekaClassifierType wekaClassifierType, File arffFile) {
-        this(wekaClassifierType, arffFile, null, null, null);
+        this(wekaClassifierType, arffFile, null, null, null, null);
     }
 
     public WekaClassifier(WekaClassifierType wekaClassifierType,
                           File arffFile,
                           String relationName,
                           Iterable<Feature> attributes,
-                          NominalFeature classAttribute) {
+                          NominalFeature classAttribute,
+                          Iterable<Feature> metaDataAttributes) {
         this.arffFile = arffFile;
         this.wekaClassifierType = wekaClassifierType;
         wekaClassifier = newClassifier();
@@ -67,6 +73,13 @@ public class WekaClassifier implements Classifier {
         } else {
             instances = buildInstances(arffFile);
         }
+
+        if (metaDataAttributes == null) {
+            this.metaDataAttributes = Collections.emptyList();
+        } else {
+            this.metaDataAttributes = ImmutableList.copyOf(metaDataAttributes);
+        }
+
     }
 
     private static Instances buildInstances(String relationName,
@@ -135,17 +148,47 @@ public class WekaClassifier implements Classifier {
         Discretize filter = new Discretize();
         try {
             filter.setInputFormat(instances);
-            instances = Filter.useFilter(instances, filter);
+            return Filter.useFilter(instances, filter);
         } catch (Exception e) {
             throw Throwables.propagate(e);
         }
-        return instances;
+    }
+
+    private Instances removeMetaData(Instances instances) {
+        RemoveByName filter = new RemoveByName();
+        Iterable<String> attributes = Iterables.transform(metaDataAttributes, new Function<Feature, String>() {
+            @Override
+            public String apply(Feature feature) {
+                return feature.getName();
+            }
+        });
+        filter.setExpression(Joiner.on("|").join(attributes));
+        try {
+            filter.setInputFormat(instances);
+            return Filter.useFilter(instances, filter);
+        } catch (Exception e) {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    private Iterable<Feature> removeMetaData(Iterable<Feature> features) {
+        return Iterables.filter(features, new Predicate<Feature>() {
+            @Override
+            public boolean apply(Feature feature) {
+                for (Feature metaDataAttribute : metaDataAttributes) {
+                    if (feature.getName().equals(metaDataAttribute.getName())) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        });
     }
 
     @Override
     public void train() {
         try {
-            wekaClassifier.buildClassifier(instances);
+            wekaClassifier.buildClassifier(removeMetaData(instances));
         } catch (Exception e) {
             throw Throwables.propagate(e);
         }
@@ -153,8 +196,8 @@ public class WekaClassifier implements Classifier {
 
     @Override
     public List<Label> classify(List<Feature> features) {
-        Instances instances = this.instances;
-        Instance instance = newInstance(features);
+        Instances instances = removeMetaData(this.instances);
+        Instance instance = newInstance(removeMetaData(features), instances);
 
         if (wekaClassifierType.isRequiresDiscrete()) {
             instances = discretize(instances);
@@ -229,6 +272,10 @@ public class WekaClassifier implements Classifier {
     }
 
     private Instance newInstance(Iterable<Feature> features) {
+        return newInstance(features, instances);
+    }
+
+    private static Instance newInstance(Iterable<Feature> features, Instances instances) {
         final DenseInstance instance = new DenseInstance(instances.numAttributes());
         instance.setDataset(instances);
 
