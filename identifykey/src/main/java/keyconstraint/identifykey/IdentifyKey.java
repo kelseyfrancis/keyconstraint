@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
@@ -34,6 +36,18 @@ public class IdentifyKey {
     private static final List<String> keys = Arrays.asList(
             "C", "c", "C#", "c#", "D", "d", "D#", "d#", "E", "e", "F", "f",
             "F#", "f#", "G", "g", "G#", "g#", "A", "a", "A#", "a#", "B", "b");
+    private static final Map<String, String> keySynonyms = ImmutableMap.<String, String>builder()
+            .put("Db", "C#")
+            .put("db", "c#")
+            .put("Eb", "D#")
+            .put("eb", "d#")
+            .put("Gb", "F#")
+            .put("gb", "f#")
+            .put("Ab", "G#")
+            .put("ab", "g#")
+            .put("Bb", "A#")
+            .put("bb", "a#")
+            .build();
 
     private static final String keyAttribute = "key";
 
@@ -82,8 +96,9 @@ public class IdentifyKey {
 
         List<Feature> attributes = Lists.newArrayList(extractor.getAttributes());
         List<Feature> metaDataAttributes = titleExtractor.getAttributes();
+        WekaClassifierType classifierType = WekaClassifierType.NNGE;
         WekaClassifier classifier = new WekaClassifier(
-                WekaClassifierType.NNGE, labels, "IdentifyKey", attributes, keyAttribute(), metaDataAttributes);
+                classifierType, labels, "IdentifyKey", attributes, keyAttribute(), metaDataAttributes);
 
         boolean askForLabel = ns.get("label") == askForLabelFlag;
         String label = askForLabel ? null : ns.getString("label");
@@ -98,6 +113,7 @@ public class IdentifyKey {
             for (AudioTrack track : tracks) {
                 if (verbose) System.out.printf("Loading audio for `%s'...\n", track.title);
                 Audio in = track.acquireAudio();
+//                new WaveFileWriter(in, new FileOutputStream(in.getTitle() + ".wav")).write();
 
                 if (verbose) System.out.println("Extracting features...");
                 List<Feature> features = extractor.extractFeatures(in);
@@ -107,7 +123,7 @@ public class IdentifyKey {
                         BufferedReader cons = new BufferedReader(new InputStreamReader(System.in));
                         for (;;) {
                             System.out.printf("Label for `%s': ", in.getTitle());
-                            label = cons.readLine();
+                            label = key(cons.readLine());
                             if (isValidLabel(label)) break;
                             System.out.printf("Invalid label: `%s'\n", label);
                         }
@@ -132,7 +148,7 @@ public class IdentifyKey {
                     if (verbose) System.out.println("Done.");
                 } else {
                     if (!classifierTrained) {
-                        if (verbose) System.out.println("Training classifier...");
+                        if (verbose) System.out.printf("Training `%s' classifier...", classifierType.getName());
                         classifier.train();
                         classifierTrained = true;
                     }
@@ -145,14 +161,16 @@ public class IdentifyKey {
                     for (NominalLabel detectedLabel : detectedLabels) {
                         String detectedKey = detectedLabel.getValue();
                         double prob = detectedLabel.getProbability();
-                        output.add(String.format("%s (p=%.4f)", detectedKey, prob));
+                        if (prob > 0.1 || output.isEmpty()) {
+                            output.add(String.format("%s (p=%.4f)", detectedKey, prob));
+                        }
                     }
                     if (verbose) {
                         NominalLabel mostProbable = detectedLabels.get(0);
                         System.out.printf("Detected key of `%s' in `%s' with probability %.4f.\n",
                                 mostProbable.getValue(), in.getTitle(), mostProbable.getProbability());
                     }
-                    System.out.println(Joiner.on(", ").join(output));
+                    System.out.printf("%s # %s\n", Joiner.on(", ").join(output), in.getTitle());
                 }
             }
         }
@@ -164,6 +182,11 @@ public class IdentifyKey {
 
     private static boolean isValidLabel(String label) {
         return label != null && (label.equals(skipLabel) || keys.contains(label));
+    }
+
+    private static String key(String synonym) {
+        String key = keys.contains(synonym) ? synonym : keySynonyms.get(synonym);
+        return key == null ? synonym : key;
     }
 
     private static Iterable<AudioTrack> tracks(final File file) throws IOException {
