@@ -9,9 +9,18 @@ import sys
 from threading import Thread
 from time import sleep, time
 
-def sine(x): return math.sin(x * 2. * pi)
-def triangle(x): return (4. * x - 1) if x < .5 else (-2. * x + 1)
-def square(x): return -1 if x < .5 else 1
+def sine(x):
+  return np.sin(x * 2. * pi)
+def triangle(x):
+  return np.array(list([
+    (4. * i - 1) if i < .5 else (-2. * i + 1) \
+    for i in np.array(x)
+  ]))
+
+def square(x):
+  return np.array(list([
+    -1 if i < .5 else 1 for i in np.array(x)
+  ]))
 
 class Context:
 
@@ -106,15 +115,28 @@ class WaveTable:
         self._table = np.hstack((self._table, module.next(t, 1000)))
 
   def next(self, t, n):
+
+    t = t * self._oversample
+
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
+
     def gen_indices():
+      i = 0
       while self._i is not None:
         j = int(self._i)
-        self._i += t * self._oversample
+        self._i += t[i]
         if self._i >= len(self._table):
           self._i = None
         yield j
-    indices = np.array(list(itertools.islice(gen_indices(), 0, n)))
+        i += 1
+        if i == n:
+          return
+
+    indices = np.array(list(gen_indices()))
     x = np.hstack((self._table[indices], np.zeros(n - len(indices))))
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -160,13 +182,19 @@ class Addition:
     return dict(list([ (liveness, list(filter(lambda m : m.liveness() == liveness, self._modules))) for liveness in ['live', 'sleep'] ]))
 
   def next(self, t, n):
+
     modules = self.modules()
+
     sleep = modules['sleep']
     [ m.skip(n) for m in sleep if m.skip ]
+
     live = modules['live']
+
     if len(live) == 0:
       return np.zeros(n)
+
     x = sum([ m.next(t, n) for m in live ])
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -193,14 +221,23 @@ class Oscillator:
 
   def next(self, t, n):
 
-    def gen():
-      while True:
-        self._phase += 1. * t * self._freq / self._context.sample_rate()
-        self._phase %= 1.
-        x = self._waveform( self._phase )
-        yield x
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
 
-    x = np.array(list(itertools.islice(gen(), 0, n)))
+    def gen():
+      i = 0
+      while True:
+        self._phase += 1. * t[i] * self._freq / self._context.sample_rate()
+        self._phase %= 1.
+        yield self._phase
+        i += 1
+        if i == len(t):
+          return
+
+    phases = np.array(list(itertools.islice(gen(), 0, n)))
+    x = self._waveform(phases)
+
     if self._noise != 0:
       x += np.array([ random.gauss(0, self._noise) for i in xrange(n) ])
     x *= self._amp
@@ -220,9 +257,16 @@ class FreqMod:
     self._modulator = modulator
 
   def next(self, t, n):
+
     m = self._modulator.next(t, n)
-    x = np.array([ self._carrier.next(t + t * m[i] / 2, 1)[0] for i in xrange(n) ])
-    # todo modify next() implementations so t can be an array
+
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
+
+    t = t + t * m / 2.
+    x = self._carrier.next(t, n)
+
     assert len(x.shape) == 1
     assert len(x) == n
     return x
@@ -296,10 +340,14 @@ class ADSR:
 
   def next(self, t, n):
 
+    t = np.array(t)
+    if not len(t.shape):
+      t = t + np.zeros(n)
+
     def gen():
       while True:
         d = self._duration
-        T = self._t + t
+        T = self._t + t[0]
         sa = self._sustain_amp
         s = self._section
         if s == 'a':

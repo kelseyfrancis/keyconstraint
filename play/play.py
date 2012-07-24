@@ -26,8 +26,8 @@ def beep(c, n):
     c.square(freq = 5 * n.frequency(), noise = .0002, amp = 0.3),
     c.triangle(freq = 3 * n.frequency(), noise = .0002, amp = 0.1),
   ])
-  x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.15, base = 1))
-  #x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp = .05, noise = .01))
+  x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.15, base = 1.))
+  x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp = .01, noise = .02))
   x = c.am(x, c.adsr(.01, .05, .2, 1.4))
   return c.table(module = x)
 
