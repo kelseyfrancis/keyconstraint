@@ -38,6 +38,7 @@ public class IdentifyKey {
     private static final String keyAttribute = "key";
 
     private static final Object askForLabelFlag = new Object();
+    private static final String skipLabel = "?";
 
     private IdentifyKey() {}
 
@@ -114,6 +115,12 @@ public class IdentifyKey {
                         System.exit(1);
                         return;
                     }
+
+                    if (label.equals(skipLabel)) {
+                        if (verbose) System.out.println("Skipping...");
+                        continue;
+                    }
+
                     if (verbose) System.out.printf("Labeling as `%s'...\n", label);
                     classifier.label(features, new NominalLabel(keyAttribute, label));
 
@@ -149,7 +156,7 @@ public class IdentifyKey {
     }
 
     private static boolean isValidLabel(String label) {
-        return label != null && keys.contains(label);
+        return label != null && (label.equals(skipLabel) || keys.contains(label));
     }
 
     private static Iterable<AudioTrack> tracks(final File file) throws IOException {
