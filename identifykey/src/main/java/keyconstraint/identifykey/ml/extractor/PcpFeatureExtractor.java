@@ -23,7 +23,7 @@ public class PcpFeatureExtractor implements FeatureExtractor {
         if (audio.getChannels() == 2) {
             audio = new StereoToMonoMixer().mix(audio);
         }
-        List<Frame> frames = new SpectrumAnalyzer(WindowFunctions.hamming).analyze(audio);
+        List<Frame> frames = new SpectrumAnalyzer(WindowFunctions.hann).analyze(audio);
         PitchClassProfile pcp = new PitchClassProfile(
                 Spectrum.combine(Iterables.transform(frames, new Function<Frame, Spectrum>() {
                     @Override

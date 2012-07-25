@@ -23,6 +23,14 @@ public class WindowFunctions {
         }
     };
 
+    /** http://en.wikipedia.org/wiki/Window_function#Hann_.28Hanning.29_window **/
+    public static final WindowFunction hann = new WindowFunction() {
+        @Override
+        public double w(int n, int N) {
+            return 0.5 * (1 - cos((2*PI*n)/(N-1)));
+        }
+    };
+
     /** http://en.wikipedia.org/wiki/Modified_discrete_cosine_transform#Window_functions */
     public static final WindowFunction vorbis = new WindowFunction() {
         @Override
