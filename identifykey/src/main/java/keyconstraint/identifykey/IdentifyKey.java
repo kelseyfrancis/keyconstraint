@@ -172,15 +172,20 @@ public class IdentifyKey {
                 if (verbose) System.out.println("Extracting features...");
                 List<Feature> features = extractor.extractFeatures(in);
 
-                String label = labelsMap != null ? labelsMap.getProperty(in.getTitle()) : labelArg;
+                String label = labelArg;
                 if (label != null || askForLabel) {
                     if (askForLabel) {
-                        BufferedReader cons = new BufferedReader(new InputStreamReader(System.in));
-                        for (;;) {
-                            System.out.printf("Label for `%s': ", in.getTitle());
-                            label = key(cons.readLine());
-                            if (isValidLabel(label)) break;
-                            System.out.printf("Invalid label: `%s'\n", label);
+                        if (labelsMap != null) {
+                            label = labelsMap.getProperty(in.getTitle());
+                        }
+                        if (label == null) {
+                            BufferedReader cons = new BufferedReader(new InputStreamReader(System.in));
+                            for (;;) {
+                                System.out.printf("Label for `%s': ", in.getTitle());
+                                label = key(cons.readLine());
+                                if (isValidLabel(label)) break;
+                                System.out.printf("Invalid label: `%s'\n", label);
+                            }
                         }
                     }
                     if (!isValidLabel(label)) {
