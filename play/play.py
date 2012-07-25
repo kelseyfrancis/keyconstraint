@@ -22,6 +22,7 @@ def memoize(obj):
 
 @memoize
 def beep(c, n):
+  #print('computing wave table for %s' % n)
   x = c.add([
     c.sine(freq = n.frequency(), noise = .0002, amp = 0.5),
     c.square(freq = 5 * n.frequency(), noise = .0002, amp = 0.3),
@@ -58,6 +59,7 @@ class MidiListener(Thread):
       if len(e):
         e = e[0][0]
         if e[2] and (36 <= e[1] <= 84):
+          #print(e[1])
           self._on_note(music.midi_note(e[1]))
       else:
         sleep(.001)

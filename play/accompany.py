@@ -1,10 +1,13 @@
 from copy import copy
 from subprocess import Popen, PIPE
 import sys
+from threading import Thread
 
 import play, music, synth
 
 def _main():
+  c = synth.Context()
+  PrecomputeWaveTables(c).start()
   midi_name = sys.argv[1]
   file_name = sys.argv[2]
   command = './identifykey.sh -f %s' % file_name
@@ -12,7 +15,6 @@ def _main():
   p = Popen(command, shell=True, stdout=PIPE)
   key = p.stdout.readline().strip()
   print('Detected key: [%s]' % key)
-  c = synth.Context()
   t = None
   if midi_name:
     a = c.add(keep_alive = True)
@@ -35,6 +37,19 @@ def _main():
   if t: t.stop()
   c.stop()
   if m: m.kill()
+
+class PrecomputeWaveTables(Thread):
+  
+  def __init__(self, c):
+    super(PrecomputeWaveTables, self).__init__()
+    self._c = c
+    self.daemon = True
+
+  def run(self):
+    c = self._c
+    for i in range(67, 75):
+      n = music.midi_note(i-12)
+      play.beep(c, n)
 
 if __name__ == '__main__':
   _main()
