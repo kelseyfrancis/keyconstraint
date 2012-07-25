@@ -32,14 +32,17 @@ public enum WekaClassifierType {
     RANDOM_FOREST("RandomForest", "Random Forests") {
         @Override
         public Classifier newInstance() {
-            return new RandomForest();
+            RandomForest c = new RandomForest();
+            c.setNumTrees(100);
+            return c;
         }
     },
 
     NAIVE_BAYES("NaiveBayes", "Naive Bayes classifier using estimator classes") {
         @Override
         public Classifier newInstance() {
-            return new NaiveBayes();
+            NaiveBayes c = new NaiveBayes();
+            return c;
         }
     },
 
@@ -57,7 +60,8 @@ public enum WekaClassifierType {
         public Classifier newInstance() {
             MultiScheme c = new MultiScheme();
             c.setDebug(true);
-            c.setClassifiers(new Classifier[]{NNGE.newInstance(), MULTILAYER_PERCEPTRON.newInstance(), NAIVE_BAYES.newInstance()});
+            c.setClassifiers(new Classifier[]{NNGE.newInstance(), RANDOM_FOREST.newInstance(), MULTILAYER_PERCEPTRON.newInstance(), NAIVE_BAYES.newInstance()});
+//            c.setNumFolds(10);
             return c;
         }
     },
@@ -65,11 +69,28 @@ public enum WekaClassifierType {
     VOTE("Vote", "Vote") {
         @Override
         public Classifier newInstance() {
-            Vote c = new Vote();
-            c.setClassifiers(new Classifier[]{NNGE.newInstance(), MULTILAYER_PERCEPTRON.newInstance(), NAIVE_BAYES.newInstance(), RANDOM_FOREST.newInstance()});
-            c.setCombinationRule(new SelectedTag(Vote.MAJORITY_VOTING_RULE, Vote.TAGS_RULES));
-            c.setDebug(true);
-            return c;
+//            Classifier c1 = new NNge() {
+//                @Override
+//                public double[] distributionForInstance(Instance instance) throws Exception {
+//                    double[] dist = super.distributionForInstance(instance);
+//                    for (int i = 0; i < dist.length; i++) {
+//                        if (dist[i] != 1.0) {
+//                            dist[i] = 0.95;
+//                        }
+//                    }
+//                    return dist;
+//                }
+//            };
+
+            Vote c2 = new Vote();
+            c2.setClassifiers(new Classifier[]{RANDOM_FOREST.newInstance(), MULTILAYER_PERCEPTRON.newInstance()});
+            c2.setCombinationRule(new SelectedTag(Vote.PRODUCT_RULE, Vote.TAGS_RULES));
+            return c2;
+
+//            Vote c = new Vote();
+//            c.setClassifiers(new Classifier[]{c1, c2});
+//            c.setCombinationRule(new SelectedTag(Vote.AVERAGE_RULE, Vote.TAGS_RULES));
+//            return c;
         }
     };
 
