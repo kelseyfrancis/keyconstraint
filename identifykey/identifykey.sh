@@ -5,4 +5,4 @@ then
   mvn install
 fi
 
-java -Xmx512M -jar target/identifykey.jar "$@"
+java -jar target/identifykey.jar "$@"

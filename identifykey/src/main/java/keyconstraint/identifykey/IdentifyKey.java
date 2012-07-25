@@ -74,8 +74,10 @@ public class IdentifyKey {
                 .defaultHelp(true)
                 .description("Identify the key of the given songs.");
         parser.addArgument("-v", "--verbose").action(storeTrue());
-        parser.addArgument("--dist").action(storeTrue());
-        parser.addArgument("--title").action(storeTrue());
+        parser.addArgument("--dist").action(storeTrue())
+                .help("Show a probability distribution of predicted keys.");
+        parser.addArgument("--title").action(storeTrue())
+                .help("Show the title of each track next to its predicted key.");
         parser.addArgument("--labels")
                 .setDefault("labels.arff")
                 .help("Labeled data set (ARFF)");
@@ -84,8 +86,9 @@ public class IdentifyKey {
                 .setConst(askForLabelFlag)
                 .help("Label to affix to the given song. If no label specified, ask for label.");
         parser.addArgument("--labelsmap")
-                .help("File that maps titles to labels");
+                .help("Properties file that maps titles to labels to avoid a prompt when label is known.");
         parser.addArgument("--classifier")
+                .help("Classifier to use.")
                 .setDefault(WekaClassifierType.COMBINED)
                 .choices(new ArgumentChoice() {
                     @Override
@@ -110,11 +113,12 @@ public class IdentifyKey {
                         return WekaClassifierType.forName(value);
                     }
                 });
-        parser.addArgument("--splitcue").action(storeTrue());
+        parser.addArgument("--splitcue").action(storeTrue())
+                .help("Split the given cue sheet's wave into individual tracks.");
         parser.addArgument("-f", "--file")
                 .required(true)
                 .nargs("+")
-                .help("Song to classify or label (WAV)");
+                .help("Song(s) to classify or label (WAV or CUE)");
 
         // TODO add param for classifier algorithm
 
