@@ -36,14 +36,14 @@ public enum WekaClassifierType {
         }
     },
 
-    NAIVE_BAYES("Naive Bayes", "Naive Bayes classifier using estimator classes") {
+    NAIVE_BAYES("NaiveBayes", "Naive Bayes classifier using estimator classes") {
         @Override
         public Classifier newInstance() {
             return new NaiveBayes();
         }
     },
 
-    MULTILAYER_PERCEPTRON("Multilayer perceptron", "Multilayer perceptron") {
+    MULTILAYER_PERCEPTRON("Perceptron", "Multilayer perceptron") {
         @Override
         public Classifier newInstance() {
             MultilayerPerceptron c = new MultilayerPerceptron();
