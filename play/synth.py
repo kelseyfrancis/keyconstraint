@@ -25,7 +25,7 @@ def square(x):
 class Context:
 
   def __init__(self):
-    self._sample_rate = 44100
+    self._sample_rate = 44100 / 4
     self._buffer_size = int(self._sample_rate * .1)
     self._player = Player(self)
 
