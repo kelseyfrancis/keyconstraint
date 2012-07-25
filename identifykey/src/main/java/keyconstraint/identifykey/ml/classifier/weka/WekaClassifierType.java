@@ -52,7 +52,7 @@ public enum WekaClassifierType {
         }
     },
 
-    MULTI_SCHEME("Multi scheme", "Multi scheme") {
+    MULTI_SCHEME("MultiScheme", "Multi scheme") {
         @Override
         public Classifier newInstance() {
             MultiScheme c = new MultiScheme();
@@ -101,5 +101,14 @@ public enum WekaClassifierType {
 
     public boolean isRequiresDiscrete() {
         return requiresDiscrete;
+    }
+
+    public static WekaClassifierType forName(String name) {
+        for (WekaClassifierType type : WekaClassifierType.values()) {
+            if (type.getName().toString().equalsIgnoreCase(name)) {
+                return type;
+            }
+        }
+        return null;
     }
 }

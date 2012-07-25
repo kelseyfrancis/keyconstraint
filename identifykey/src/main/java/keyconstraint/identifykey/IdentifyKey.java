@@ -1,7 +1,9 @@
 package keyconstraint.identifykey;
 
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
@@ -18,6 +20,7 @@ import keyconstraint.identifykey.ml.feature.NominalFeature;
 import keyconstraint.identifykey.ml.label.NominalLabel;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.Argument;
+import net.sourceforge.argparse4j.inf.ArgumentChoice;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.ArgumentType;
@@ -82,17 +85,28 @@ public class IdentifyKey {
         parser.addArgument("--labelsmap")
                 .help("File that maps titles to labels");
         parser.addArgument("--classifier")
-                .choices(WekaClassifierType.values())
                 .setDefault(WekaClassifierType.NNGE)
+                .choices(new ArgumentChoice() {
+                    @Override
+                    public boolean contains(Object val) {
+                        return Arrays.asList(WekaClassifierType.values()).contains(val);
+                    }
+
+                    @Override
+                    public String textualFormat() {
+                        return Joiner.on("|").join(Iterables.transform(Arrays.asList(WekaClassifierType.values()),
+                                new Function<WekaClassifierType, Object>() {
+                                    @Override
+                                    public Object apply(WekaClassifierType type) {
+                                        return type.getName().toString().toLowerCase();
+                                    }
+                                }));
+                    }
+                })
                 .type(new ArgumentType<WekaClassifierType>() {
                     @Override
                     public WekaClassifierType convert(ArgumentParser parser, Argument arg, String value) throws ArgumentParserException {
-                        for (WekaClassifierType type : WekaClassifierType.values()) {
-                            if (type.getName().toString().equalsIgnoreCase(value)) {
-                                return type;
-                            }
-                        }
-                        throw new ArgumentParserException("Invalid classifier: `" + value + "'", parser, arg);
+                        return WekaClassifierType.forName(value);
                     }
                 });
         parser.addArgument("-f", "--file")
@@ -215,7 +229,7 @@ public class IdentifyKey {
                         List<String> output = Lists.newArrayList();
                         for (NominalLabel l : predictedLabels) {
                             double prob = l.getProbability();
-                            if (prob > 0.1 || output.isEmpty()) {
+                            if (prob > 0.01 || output.isEmpty()) {
                                 output.add(String.format("%s (p=%.4f)", l.getValue(), prob));
                             }
                         }
