@@ -65,36 +65,3 @@ class MidiListener(Thread):
 
   def stop(self):
     self._halt = True
-
-def _main():
-
-  key = music.key(sys.argv[1])
-  midi_name = sys.argv[2] if len(sys.argv) > 2 else None
-  file_name = sys.argv[3] if len(sys.argv) > 3 else None
-  c = synth.Context()
-  t = None
-  if midi_name:
-    a = c.add(keep_alive = True)
-    c.start(a)
-    def on_note(note):
-      shifted = note.key_shift('C', key)
-      print('%s -> %s' % (note, shifted))
-      if shifted:
-        a.add_module(copy(beep(c, shifted.shift_octave(-1))))
-    t = MidiListener(on_note, name=midi_name)
-    t.start()
-  else:
-    c.start(scale(c, key))
-  m = None
-  if file_name:
-    command = 'aplay %s' % (file_name,)
-    print(command)
-    m = Popen(command.split(), stdin=PIPE)
-  sys.stdin.readline()
-  if t: t.stop()
-  c.stop()
-  if m: m.kill()
-
-if __name__ == '__main__':
-  _main()
-
