@@ -24,6 +24,7 @@ import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
 import keyconstraint.identifykey.audio.cuesheet.CueSheet;
 import keyconstraint.identifykey.audio.cuesheet.Track;
+import keyconstraint.identifykey.audio.writer.WaveFileWriter;
 import keyconstraint.identifykey.ml.classifier.weka.WekaClassifier;
 import keyconstraint.identifykey.ml.classifier.weka.WekaClassifierType;
 import keyconstraint.identifykey.ml.extractor.CompositeFeatureExtractor;
@@ -167,7 +168,9 @@ public class IdentifyKey {
             for (AudioTrack track : tracks) {
                 if (verbose) System.out.printf("Loading audio for `%s'...\n", track.title);
                 Audio in = track.acquireAudio();
-//                new WaveFileWriter(in, new FileOutputStream(in.getTitle() + ".wav")).write();
+                if (filename.toLowerCase().endsWith(".cue") && ns.getBoolean("splitcue")) {
+                    new WaveFileWriter(in, new FileOutputStream(in.getTitle() + ".wav")).write();
+                }
 
                 if (verbose) System.out.println("Extracting features...");
                 List<Feature> features = extractor.extractFeatures(in);
