@@ -78,7 +78,7 @@ public enum WekaClassifierType {
         }
     },
 
-    Combined("Combined", "Combined") {
+    COMBINED("Combined", "Combined") {
         @Override
         public Classifier newInstance() {
             return new CombinedClassifier();

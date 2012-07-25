@@ -85,7 +85,7 @@ public class IdentifyKey {
         parser.addArgument("--labelsmap")
                 .help("File that maps titles to labels");
         parser.addArgument("--classifier")
-                .setDefault(WekaClassifierType.NNGE)
+                .setDefault(WekaClassifierType.COMBINED)
                 .choices(new ArgumentChoice() {
                     @Override
                     public boolean contains(Object val) {
