@@ -26,7 +26,7 @@ class NoteCategory:
   _letters = list('C-D-EF-G-A-B')
 
   _indices = dict(filter(lambda x : x, map(
-    lambda (i, s): (None if s == '-' else (s, i)), 
+    lambda (i, s): (None if s == '-' else (s, i)),
     enumerate(_letters))))
 
   _accidentals = { '#': 1, 'b': -1 }
@@ -34,7 +34,7 @@ class NoteCategory:
   @staticmethod
   def _index(name):
     base = NoteCategory._indices[name[0].upper()]
-    accidental = NoteCategory._accidentals[name[1]] if len(name) > 1 else 0 
+    accidental = NoteCategory._accidentals[name[1]] if len(name) > 1 else 0
     return (base + accidental) % len(NoteCategory._letters);
 
   @staticmethod
@@ -148,22 +148,28 @@ class Note:
   def frequency(self):
     return 2 ** ( ( self.index() - note('A4').index() ) / 12. ) * 440
 
+  def shift_octave(self, offset):
+    return Note(self.category(), self.octave() + offset)
+
   """
   Shifts the note from key x to key y.
-  
+
   Parameters:
     x - The original note belongs to this key.
     y - The returned note belongs to this key.
- 
+
   Returns:
     An "equivalent" note in key y.
- 
+
   Example:
     note('A4').key_shift('C', 'g#') shifts an A4 note from
     C major to G sharp minor, and the resulting note is E5.
   """
   def key_shift(self, x, y):
-    i = key(x).categories().index(self.category())
+    cats = key(x).categories()
+    cat = self.category()
+    if not cat in cats: return None
+    i = cats.index(cat)
     notes = key(y).notes(self.octave())
     return itertools.islice(notes, i, None).next()
 
@@ -193,15 +199,15 @@ class Scale:
     return self._categories
 
   def notes(self, octave, start = None, step = 1):
-    
+
     if not step in [-1, 1]:
       raise ValueError
-    
+
     forward = step > 0
     start = self.categories()[0] if start is None else note_category(start)
-    
+
     categories = self.categories()
-    if not forward: 
+    if not forward:
       categories = list(reversed(categories))
     start_index = categories.index(start)
     categories = itertools.cycle(categories)
@@ -267,7 +273,7 @@ class Key:
 
   def __str__(self):
     return unicode(self).encode('utf-8')
- 
+
   def __unicode__(self):
     return '<Key %s>' % self.name()
 
@@ -277,7 +283,7 @@ class Key:
   def name(self):
     x = self.category().name()
     return x.upper() if self.major() else x.lower()
-  
+
   def major(self):
     return self._major
 
