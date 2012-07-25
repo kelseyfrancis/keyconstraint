@@ -3,6 +3,7 @@ import functools
 import itertools
 from pygame import midi
 import signal
+from subprocess import Popen, PIPE
 import sys
 from threading import Thread
 from time import sleep
@@ -27,7 +28,6 @@ def beep(c, n):
     c.triangle(freq = 3 * n.frequency(), noise = .0002, amp = 0.1),
   ])
   x = c.am(carrier = x, modulator = c.sine(freq = 2, amp = 0.15, base = 1.))
-  #x = c.fm(carrier = x, modulator = c.sine(freq = 6, amp = .01, noise = .02))
   x = c.am(x, c.adsr(.01, .05, .2, 1.4))
   return c.table(module = x)
 
@@ -70,24 +70,30 @@ def _main():
 
   key = music.key(sys.argv[1])
   midi_name = sys.argv[2] if len(sys.argv) > 2 else None
+  file_name = sys.argv[3] if len(sys.argv) > 3 else None
   c = synth.Context()
   t = None
-  #if True:
-  #  c.start(c.am(carrier=c.triangle(freq=440), modulator=c.sine(freq=1, positive=True)))
   if midi_name:
     a = c.add(keep_alive = True)
     c.start(a)
     def on_note(note):
       shifted = note.key_shift('C', key)
       print('%s -> %s' % (note, shifted))
-      a.add_module(copy(beep(c, shifted)))
+      if shifted:
+        a.add_module(copy(beep(c, shifted.shift_octave(-1))))
     t = MidiListener(on_note, name=midi_name)
     t.start()
   else:
     c.start(scale(c, key))
+  m = None
+  if file_name:
+    command = 'aplay %s' % (file_name,)
+    print(command)
+    m = Popen(command.split(), stdin=PIPE)
   sys.stdin.readline()
   if t: t.stop()
   c.stop()
+  if m: m.kill()
 
 if __name__ == '__main__':
   _main()
