@@ -110,6 +110,7 @@ public class IdentifyKey {
                         return WekaClassifierType.forName(value);
                     }
                 });
+        parser.addArgument("--splitcue").action(storeTrue());
         parser.addArgument("-f", "--file")
                 .required(true)
                 .nargs("+")
