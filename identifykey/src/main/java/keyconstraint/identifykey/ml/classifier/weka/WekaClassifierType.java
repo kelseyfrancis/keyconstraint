@@ -1,5 +1,6 @@
 package keyconstraint.identifykey.ml.classifier.weka;
 
+import keyconstraint.identifykey.ml.classifier.CombinedClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.MultilayerPerceptron;
@@ -42,6 +43,7 @@ public enum WekaClassifierType {
         @Override
         public Classifier newInstance() {
             NaiveBayes c = new NaiveBayes();
+//            c.setUseKernelEstimator(true);
             return c;
         }
     },
@@ -69,28 +71,17 @@ public enum WekaClassifierType {
     VOTE("Vote", "Vote") {
         @Override
         public Classifier newInstance() {
-//            Classifier c1 = new NNge() {
-//                @Override
-//                public double[] distributionForInstance(Instance instance) throws Exception {
-//                    double[] dist = super.distributionForInstance(instance);
-//                    for (int i = 0; i < dist.length; i++) {
-//                        if (dist[i] != 1.0) {
-//                            dist[i] = 0.95;
-//                        }
-//                    }
-//                    return dist;
-//                }
-//            };
+            Vote c = new Vote();
+            c.setClassifiers(new Classifier[]{RANDOM_FOREST.newInstance(), MULTILAYER_PERCEPTRON.newInstance()});
+            c.setCombinationRule(new SelectedTag(Vote.PRODUCT_RULE, Vote.TAGS_RULES));
+            return c;
+        }
+    },
 
-            Vote c2 = new Vote();
-            c2.setClassifiers(new Classifier[]{RANDOM_FOREST.newInstance(), MULTILAYER_PERCEPTRON.newInstance()});
-            c2.setCombinationRule(new SelectedTag(Vote.PRODUCT_RULE, Vote.TAGS_RULES));
-            return c2;
-
-//            Vote c = new Vote();
-//            c.setClassifiers(new Classifier[]{c1, c2});
-//            c.setCombinationRule(new SelectedTag(Vote.AVERAGE_RULE, Vote.TAGS_RULES));
-//            return c;
+    Combined("Combined", "Combined") {
+        @Override
+        public Classifier newInstance() {
+            return new CombinedClassifier();
         }
     };
 
