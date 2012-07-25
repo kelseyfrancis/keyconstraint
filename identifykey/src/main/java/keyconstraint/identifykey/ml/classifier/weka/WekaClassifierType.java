@@ -1,14 +1,14 @@
 package keyconstraint.identifykey.ml.classifier.weka;
 
 import weka.classifiers.Classifier;
-import weka.classifiers.bayes.AODE;
-import weka.classifiers.bayes.AODEsr;
 import weka.classifiers.bayes.NaiveBayes;
-import weka.classifiers.bayes.WAODE;
 import weka.classifiers.functions.MultilayerPerceptron;
+import weka.classifiers.meta.MultiScheme;
+import weka.classifiers.meta.Vote;
 import weka.classifiers.rules.NNge;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
+import weka.core.SelectedTag;
 
 public enum WekaClassifierType {
 
@@ -22,49 +22,75 @@ public enum WekaClassifierType {
     NNGE("NNge", "Nearest-neighbor-like algorithm using non-nested generalized exemplars") {
         @Override
         public Classifier newInstance() {
-            return new NNge();
+            NNge c = new NNge();
+//            c.setNumAttemptsOfGeneOption(50);
+//            c.setNumFoldersMIOption(50);
+            return c;
         }
     },
 
     RANDOM_FOREST("RandomForest", "Random Forests") {
         @Override
         public Classifier newInstance() {
-            return new RandomForest();
+            RandomForest c = new RandomForest();
+            c.setNumTrees(100);
+            return c;
         }
     },
 
-    AODE("AODE", "Averaged One-Dependence Estimators", true) {
+    NAIVE_BAYES("NaiveBayes", "Naive Bayes classifier using estimator classes") {
         @Override
         public Classifier newInstance() {
-            return new AODE();
+            NaiveBayes c = new NaiveBayes();
+            return c;
         }
     },
 
-    AODE_SR("AODEsr", "Averaged One-Dependence Estimators with Subsumption Resolution", true) {
+    MULTILAYER_PERCEPTRON("Perceptron", "Multilayer perceptron") {
         @Override
         public Classifier newInstance() {
-            return new AODEsr();
+            MultilayerPerceptron c = new MultilayerPerceptron();
+            c.setTrainingTime(5000);
+            return c;
         }
     },
 
-    WAODE("WAODE", "Weightily Averaged One-Dependence Estimators", true) {
+    MULTI_SCHEME("MultiScheme", "Multi scheme") {
         @Override
         public Classifier newInstance() {
-            return new WAODE();
+            MultiScheme c = new MultiScheme();
+            c.setDebug(true);
+            c.setClassifiers(new Classifier[]{NNGE.newInstance(), RANDOM_FOREST.newInstance(), MULTILAYER_PERCEPTRON.newInstance(), NAIVE_BAYES.newInstance()});
+//            c.setNumFolds(10);
+            return c;
         }
     },
 
-    NAIVE_BAYES("Naive Bayes", "Naive Bayes classifier using estimator classes") {
+    VOTE("Vote", "Vote") {
         @Override
         public Classifier newInstance() {
-            return new NaiveBayes();
-        }
-    },
+//            Classifier c1 = new NNge() {
+//                @Override
+//                public double[] distributionForInstance(Instance instance) throws Exception {
+//                    double[] dist = super.distributionForInstance(instance);
+//                    for (int i = 0; i < dist.length; i++) {
+//                        if (dist[i] != 1.0) {
+//                            dist[i] = 0.95;
+//                        }
+//                    }
+//                    return dist;
+//                }
+//            };
 
-    MULTILAYER_PERCEPTRON("Multilayer perceptron", "Multilayer perceptron") {
-        @Override
-        public Classifier newInstance() {
-            return new MultilayerPerceptron();
+            Vote c2 = new Vote();
+            c2.setClassifiers(new Classifier[]{RANDOM_FOREST.newInstance(), MULTILAYER_PERCEPTRON.newInstance()});
+            c2.setCombinationRule(new SelectedTag(Vote.PRODUCT_RULE, Vote.TAGS_RULES));
+            return c2;
+
+//            Vote c = new Vote();
+//            c.setClassifiers(new Classifier[]{c1, c2});
+//            c.setCombinationRule(new SelectedTag(Vote.AVERAGE_RULE, Vote.TAGS_RULES));
+//            return c;
         }
     };
 
@@ -96,5 +122,14 @@ public enum WekaClassifierType {
 
     public boolean isRequiresDiscrete() {
         return requiresDiscrete;
+    }
+
+    public static WekaClassifierType forName(String name) {
+        for (WekaClassifierType type : WekaClassifierType.values()) {
+            if (type.getName().toString().equalsIgnoreCase(name)) {
+                return type;
+            }
+        }
+        return null;
     }
 }

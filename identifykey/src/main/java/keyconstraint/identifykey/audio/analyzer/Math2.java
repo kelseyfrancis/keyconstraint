@@ -1,18 +1,11 @@
 package keyconstraint.identifykey.audio.analyzer;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.Math.log;
 import static java.lang.Math.sqrt;
 
 public class Math2 {
 
-    private static final double LOG_2 = log(2.0);
-
     private Math2() {}
-
-    public static double log2(double a) {
-        return log(a) / LOG_2;
-    }
 
     public static double sq(double a) {
         return a * a;

@@ -1,18 +1,21 @@
 package keyconstraint.identifykey.audio.cuesheet;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
+import keyconstraint.identifykey.audio.ArrayAudio;
+import keyconstraint.identifykey.audio.Audio;
+
+import javax.annotation.Nullable;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.annotation.Nullable;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import keyconstraint.identifykey.audio.ArrayAudio;
-import keyconstraint.identifykey.audio.Audio;
 
 import static java.lang.Integer.parseInt;
 
@@ -27,7 +30,10 @@ public class CueSheet {
         File wavFile = null;
         List<Track> tracks = Lists.newArrayList();
 
-        Scanner scanner = new Scanner(file);
+        Reader reader = new BufferedReader(new FileReader(file));
+        Scanner scanner = new Scanner(CharStreams.toString(reader));
+        reader.close();
+
         String token;
         Track track = null;
         Track lastTrack = null;

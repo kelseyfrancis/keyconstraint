@@ -33,8 +33,7 @@ public class PcpFeatureExtractor implements FeatureExtractor {
                 })));
 
         List<Feature> features = Lists.newArrayList();
-        for (Map.Entry<String, Double> entry :
-                Iterables.concat(pcp.getPitchDistByNote().entrySet(), pcp.getPitchDistByOctaveByNote().entrySet())) {
+        for (Map.Entry<String, Double> entry : pcp.getPitchDistByNote().entrySet()) {
             features.add(new NumericFeature(entry.getKey(), entry.getValue()));
         }
         return features;
@@ -43,8 +42,7 @@ public class PcpFeatureExtractor implements FeatureExtractor {
     @Override
     public List<Feature> getAttributes() {
         return ImmutableList.copyOf(
-                Iterables.transform(
-                        Iterables.concat(PitchClassProfile.allNotes(), PitchClassProfile.allNotesWithOctave()),
+                Iterables.transform(PitchClassProfile.allNotes(),
                         new Function<String, Feature>() {
                             @Override
                             public Feature apply(String note) {

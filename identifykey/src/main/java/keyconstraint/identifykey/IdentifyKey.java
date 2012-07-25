@@ -1,13 +1,9 @@
 package keyconstraint.identifykey;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.List;
-
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import keyconstraint.identifykey.audio.Audio;
 import keyconstraint.identifykey.audio.WaveFileAudio;
@@ -23,9 +19,27 @@ import keyconstraint.identifykey.ml.feature.Feature;
 import keyconstraint.identifykey.ml.feature.NominalFeature;
 import keyconstraint.identifykey.ml.label.NominalLabel;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.Argument;
+import net.sourceforge.argparse4j.inf.ArgumentChoice;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.inf.ArgumentType;
 import net.sourceforge.argparse4j.inf.Namespace;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
 import static net.sourceforge.argparse4j.impl.Arguments.storeTrue;
 
@@ -34,6 +48,18 @@ public class IdentifyKey {
     private static final List<String> keys = Arrays.asList(
             "C", "c", "C#", "c#", "D", "d", "D#", "d#", "E", "e", "F", "f",
             "F#", "f#", "G", "g", "G#", "g#", "A", "a", "A#", "a#", "B", "b");
+    private static final Map<String, String> keySynonyms = ImmutableMap.<String, String>builder()
+            .put("Db", "C#")
+            .put("db", "c#")
+            .put("Eb", "D#")
+            .put("eb", "d#")
+            .put("Gb", "F#")
+            .put("gb", "f#")
+            .put("Ab", "G#")
+            .put("ab", "g#")
+            .put("Bb", "A#")
+            .put("bb", "a#")
+            .build();
 
     private static final String keyAttribute = "key";
 
@@ -47,15 +73,45 @@ public class IdentifyKey {
                 .defaultHelp(true)
                 .description("Identify the key of the given songs.");
         parser.addArgument("-v", "--verbose").action(storeTrue());
+        parser.addArgument("-d", "--dist").action(storeTrue());
+        parser.addArgument("-t", "--title").action(storeTrue());
         parser.addArgument("--labels")
-                .required(true)
+                .setDefault("labels.arff")
                 .help("Labeled data set (ARFF)");
         parser.addArgument("--label")
                 .nargs("?")
                 .setConst(askForLabelFlag)
                 .help("Label to affix to the given song. If no label specified, ask for label.");
-        parser.addArgument("file")
-                .nargs("*")
+        parser.addArgument("--labelsmap")
+                .help("File that maps titles to labels");
+        parser.addArgument("--classifier")
+                .setDefault(WekaClassifierType.NNGE)
+                .choices(new ArgumentChoice() {
+                    @Override
+                    public boolean contains(Object val) {
+                        return Arrays.asList(WekaClassifierType.values()).contains(val);
+                    }
+
+                    @Override
+                    public String textualFormat() {
+                        return Joiner.on("|").join(Iterables.transform(Arrays.asList(WekaClassifierType.values()),
+                                new Function<WekaClassifierType, Object>() {
+                                    @Override
+                                    public Object apply(WekaClassifierType type) {
+                                        return type.getName().toString().toLowerCase();
+                                    }
+                                }));
+                    }
+                })
+                .type(new ArgumentType<WekaClassifierType>() {
+                    @Override
+                    public WekaClassifierType convert(ArgumentParser parser, Argument arg, String value) throws ArgumentParserException {
+                        return WekaClassifierType.forName(value);
+                    }
+                });
+        parser.addArgument("-f", "--file")
+                .required(true)
+                .nargs("+")
                 .help("Song to classify or label (WAV)");
 
         // TODO add param for classifier algorithm
@@ -82,11 +138,24 @@ public class IdentifyKey {
 
         List<Feature> attributes = Lists.newArrayList(extractor.getAttributes());
         List<Feature> metaDataAttributes = titleExtractor.getAttributes();
+        WekaClassifierType classifierType = (WekaClassifierType) ns.get("classifier");
         WekaClassifier classifier = new WekaClassifier(
-                WekaClassifierType.NNGE, labels, "IdentifyKey", attributes, keyAttribute(), metaDataAttributes);
+                classifierType, labels, "IdentifyKey", attributes, keyAttribute(), metaDataAttributes);
 
         boolean askForLabel = ns.get("label") == askForLabelFlag;
-        String label = askForLabel ? null : ns.getString("label");
+        String labelArg = askForLabel ? null : ns.getString("label");
+
+        Properties labelsMap = null;
+        String labelsMapFilename = ns.getString("labelsmap");
+        if (labelsMapFilename != null) {
+            labelsMap = new Properties();
+            File labelsMapFile = new File(labelsMapFilename);
+            if (labelsMapFile.exists()) {
+                InputStream stream = new BufferedInputStream(new FileInputStream(labelsMapFile));
+                labelsMap.load(stream);
+                stream.close();
+            }
+        }
 
         boolean classifierTrained = false;
 
@@ -98,18 +167,25 @@ public class IdentifyKey {
             for (AudioTrack track : tracks) {
                 if (verbose) System.out.printf("Loading audio for `%s'...\n", track.title);
                 Audio in = track.acquireAudio();
+//                new WaveFileWriter(in, new FileOutputStream(in.getTitle() + ".wav")).write();
 
                 if (verbose) System.out.println("Extracting features...");
                 List<Feature> features = extractor.extractFeatures(in);
 
+                String label = labelArg;
                 if (label != null || askForLabel) {
                     if (askForLabel) {
-                        BufferedReader cons = new BufferedReader(new InputStreamReader(System.in));
-                        for (;;) {
-                            System.out.printf("Label for `%s': ", in.getTitle());
-                            label = cons.readLine();
-                            if (isValidLabel(label)) break;
-                            System.out.printf("Invalid label: `%s'\n", label);
+                        if (labelsMap != null) {
+                            label = labelsMap.getProperty(in.getTitle());
+                        }
+                        if (label == null) {
+                            BufferedReader cons = new BufferedReader(new InputStreamReader(System.in));
+                            for (;;) {
+                                System.out.printf("Label for `%s': ", in.getTitle());
+                                label = key(cons.readLine());
+                                if (isValidLabel(label)) break;
+                                System.out.printf("Invalid label: `%s'\n", label);
+                            }
                         }
                     }
                     if (!isValidLabel(label)) {
@@ -129,30 +205,46 @@ public class IdentifyKey {
                     if (verbose) System.out.println("Saving labels...");
                     classifier.writeArffFile();
 
+                    if (labelsMap != null) {
+                        labelsMap.setProperty(in.getTitle(), label);
+                        OutputStream stream = new BufferedOutputStream(new FileOutputStream(labelsMapFilename));
+                        labelsMap.store(stream, "labels map");
+                        stream.close();
+                    }
+
                     if (verbose) System.out.println("Done.");
                 } else {
                     if (!classifierTrained) {
-                        if (verbose) System.out.println("Training classifier...");
+                        if (verbose) System.out.printf("Training `%s' classifier...\n", classifierType.getName());
                         classifier.train();
                         classifierTrained = true;
                     }
                     if (verbose) System.out.println("Classifying...");
 
                     @SuppressWarnings("unchecked")
-                    List<NominalLabel> detectedLabels = (List<NominalLabel>) (List<?>) classifier.classify(features);
+                    List<NominalLabel> predictedLabels = (List<NominalLabel>) (List<?>) classifier.classify(features);
 
-                    List<String> output = Lists.newArrayList();
-                    for (NominalLabel detectedLabel : detectedLabels) {
-                        String detectedKey = detectedLabel.getValue();
-                        double prob = detectedLabel.getProbability();
-                        output.add(String.format("%s (p=%.4f)", detectedKey, prob));
+                    NominalLabel predictedLabel = predictedLabels.get(0);
+                    System.out.print(predictedLabel.getValue());
+
+                    if (ns.getBoolean("title")) System.out.printf(" : `%s'", in.getTitle());
+                    System.out.println();
+
+                    if (ns.getBoolean("dist")) {
+                        List<String> output = Lists.newArrayList();
+                        for (NominalLabel l : predictedLabels) {
+                            double prob = l.getProbability();
+                            if (prob > 0.01 || output.isEmpty()) {
+                                output.add(String.format("%s (p=%.4f)", l.getValue(), prob));
+                            }
+                        }
+                        System.out.println(Joiner.on(", ").join(output));
                     }
+
                     if (verbose) {
-                        NominalLabel mostProbable = detectedLabels.get(0);
                         System.out.printf("Detected key of `%s' in `%s' with probability %.4f.\n",
-                                mostProbable.getValue(), in.getTitle(), mostProbable.getProbability());
+                                predictedLabel.getValue(), in.getTitle(), predictedLabel.getProbability());
                     }
-                    System.out.println(Joiner.on(", ").join(output));
                 }
             }
         }
@@ -164,6 +256,11 @@ public class IdentifyKey {
 
     private static boolean isValidLabel(String label) {
         return label != null && (label.equals(skipLabel) || keys.contains(label));
+    }
+
+    private static String key(String synonym) {
+        String key = keys.contains(synonym) ? synonym : keySynonyms.get(synonym);
+        return key == null ? synonym : key;
     }
 
     private static Iterable<AudioTrack> tracks(final File file) throws IOException {

@@ -1,17 +1,16 @@
 /*
- *    This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation; either version 2 of the License, or
- *    (at your option) any later version.
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
  *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU General Public License for more details.
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- *    You should have received a copy of the GNU General Public License
- *    along with this program; if not, write to the Free Software
- *    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -62,7 +61,7 @@ import weka.core.Utils;
  *    title = {Instance-Based learning: Nearest Neighbor With Generalization},
  *    year = {1995}
  * }
- *
+ * 
  * &#64;unpublished{Roy2002,
  *    address = {Christchurch, New Zealand},
  *    author = {Sylvain Roy},
@@ -76,28 +75,28 @@ import weka.core.Utils;
  *
  <!-- options-start -->
  * Valid options are: <p/>
- *
+ * 
  * <pre> -G &lt;value&gt;
  *  Number of attempts of generalisation.
  * </pre>
- *
+ * 
  * <pre> -I &lt;value&gt;
  *  Number of folder for computing the mutual information.
  * </pre>
- *
+ * 
  <!-- options-end -->
  *
  * @author Brent Martin (bim20@cosc.canterbury.ac.nz)
  * @author Sylvain Roy (sro33@student.canterbury.ac.nz)
- * @version $Revision: 6637 $
+ * @version $Revision: 8108 $
  */
-public class NNge
-  extends AbstractClassifier
+public class NNge 
+  extends AbstractClassifier 
   implements UpdateableClassifier, OptionHandler, TechnicalInformationHandler {
 
   /** for serialization */
   static final long serialVersionUID = 4084742275553788972L;
-
+  
   /**
    * Returns a string describing classifier
    * @return a description suitable for
@@ -112,46 +111,46 @@ public class NNge
   }
 
   /**
-   * Returns an instance of a TechnicalInformation object, containing
+   * Returns an instance of a TechnicalInformation object, containing 
    * detailed information about the technical background of this class,
    * e.g., paper reference or book this class is based on.
-   *
+   * 
    * @return the technical information about this class
    */
   public TechnicalInformation getTechnicalInformation() {
     TechnicalInformation 	result;
     TechnicalInformation 	additional;
-
+    
     result = new TechnicalInformation(Type.MASTERSTHESIS);
     result.setValue(Field.AUTHOR, "Brent Martin");
     result.setValue(Field.YEAR, "1995");
     result.setValue(Field.TITLE, "Instance-Based learning: Nearest Neighbor With Generalization");
     result.setValue(Field.SCHOOL, "University of Waikato");
     result.setValue(Field.ADDRESS, "Hamilton, New Zealand");
-
+    
     additional = result.add(Type.UNPUBLISHED);
     additional.setValue(Field.AUTHOR, "Sylvain Roy");
     additional.setValue(Field.YEAR, "2002");
     additional.setValue(Field.TITLE, "Nearest Neighbor With Generalization");
     additional.setValue(Field.SCHOOL, "University of Canterbury");
     additional.setValue(Field.ADDRESS, "Christchurch, New Zealand");
-
+    
     return result;
   }
 
   /**
    * Implements Exemplar as used by NNge : parallel axis hyperrectangle.
    */
-  private class Exemplar
+  private class Exemplar 
     extends Instances {
-
+    
     /** for serialization */
     static final long serialVersionUID = 3960180128928697216L;
-
+    
     /** List of all the Exemplar */
     private Exemplar previous = null;
     private Exemplar next = null;
-
+	
     /** List of all the Exemplar with the same class */
     private Exemplar previousWithClass = null;
     private Exemplar nextWithClass = null;
@@ -164,19 +163,19 @@ public class NNge
 
     /** Number of correct prediction for this examplar */
     private int m_PositiveCount = 1;
-
+    
     /** Number of incorrect prediction for this examplar */
     private int m_NegativeCount = 0;
 
     /** The max borders of the rectangle for numeric attributes */
     private double[] m_MaxBorder;
-
+	                     
     /** The min borders of the rectangle for numeric attributes */
     private double[] m_MinBorder;
-
+	                     
     /** The ranges of the hyperrectangle for nominal attributes */
     private boolean[][] m_Range;
-
+	                     
     /** the arrays used by preGeneralise */
     private double[] m_PreMaxBorder = null;
     private double[] m_PreMinBorder = null;
@@ -232,24 +231,24 @@ public class NNge
 
       /* extends each range in order to cover inst */
       for(int i = 0; i < numAttributes(); i++){
-
+	 
 	if(inst.isMissing(i))
 	  throw new Exception("Exemplar.generalise : Generalisation with missing feature impossible.");
 
 	if(i == classIndex())
 	  continue;
-
+	    
 	if(attribute(i).isNumeric()){
-	  if(m_MaxBorder[i] < inst.value(i))
+	  if(m_MaxBorder[i] < inst.value(i)) 
 	    m_MaxBorder[i] = inst.value(i);
-	  if(inst.value(i) < m_MinBorder[i])
-	    m_MinBorder[i] = inst.value(i);
-
+	  if(inst.value(i) < m_MinBorder[i]) 
+	    m_MinBorder[i] = inst.value(i);  
+		
 	} else {
 	  m_Range[i][(int) inst.value(i)] = true;
 	}
       }
-    }
+    } 
 
 
     /**
@@ -261,7 +260,7 @@ public class NNge
      * @throws Exception if either the class of inst is not equal to the class of the Exemplar or inst misses a value.
      */
     private void preGeneralise(Instance inst) throws Exception {
-
+	
       if(m_ClassValue != inst.classValue())
 	throw new Exception("Exemplar.preGeneralise : Incompatible instance's class.");
 
@@ -290,10 +289,10 @@ public class NNge
 	if(i == classIndex())
 	  continue;
 	if(attribute(i).isNumeric()){
-	  if(m_MaxBorder[i] < inst.value(i))
+	  if(m_MaxBorder[i] < inst.value(i)) 
 	    m_MaxBorder[i] = inst.value(i);
-	  if(inst.value(i) < m_MinBorder[i])
-	    m_MinBorder[i] = inst.value(i);
+	  if(inst.value(i) < m_MinBorder[i]) 
+	    m_MinBorder[i] = inst.value(i);  
 	} else {
 	  m_Range[i][(int) inst.value(i)] = true;
 	}
@@ -317,7 +316,7 @@ public class NNge
       m_PreMaxBorder = null;
     }
 
-
+    
     /**
      * Cancels a generalisation started with preGeneralise.
      * Watch out, preGeneralise must have been called before.
@@ -345,7 +344,7 @@ public class NNge
      * @return true if inst is held by this hyperrectangle, false otherwise
      */
     private boolean holds(Instance inst) {
-
+	
       if(numInstances() == 0)
 	return false;
 
@@ -360,15 +359,15 @@ public class NNge
     /**
      * return true if value is inside the Exemplar along the attrIndex attribute.
      *
-     * @param attrIndex the index of an attribute
+     * @param attrIndex the index of an attribute 
      * @param value a value along the attrIndexth attribute
      * @return true if value is inside the Exemplar along the attrIndex attribute.
      */
     private boolean holds(int attrIndex, double value) {
-
+	
       if (numAttributes() == 0)
 	return false;
-
+	
       if(attribute(attrIndex).isNumeric())
 	return(m_MinBorder[attrIndex] <= value && value <= m_MaxBorder[attrIndex]);
       else
@@ -389,11 +388,11 @@ public class NNge
 	return false;
 
       for (int i = 0; i < numAttributes(); i++){
-
+	    
 	if(i == classIndex()){
 	  continue;
 	}
-	if (attribute(i).isNumeric() &&
+	if (attribute(i).isNumeric() && 
 	    (ex.m_MaxBorder[i] < m_MinBorder[i] || ex.m_MinBorder[i] > m_MaxBorder[i])){
 	  return false;
 	}
@@ -412,12 +411,12 @@ public class NNge
     }
 
 
-    /**
+    /** 
      * Compute the distance between the projection of inst and this Exemplar along the attribute attrIndex.
      * If inst misses its value along the attribute, the function returns 0.
      *
      * @param inst an instance
-     * @param attrIndex the index of the attribute
+     * @param attrIndex the index of the attribute 
      * @return the distance between the projection of inst and this Exemplar along the attribute attrIndex.
      */
     private double attrDistance(Instance inst, int attrIndex) {
@@ -452,20 +451,20 @@ public class NNge
 
 
     /**
-     * Returns the square of the distance between inst and the Exemplar.
-     *
+     * Returns the square of the distance between inst and the Exemplar. 
+     * 
      * @param inst an instance
      * @return the squared distance between inst and the Exemplar.
      */
     private double squaredDistance(Instance inst) {
-
+	
       double sum = 0, term;
       int numNotMissingAttr = 0;
       for(int i = 0; i < inst.numAttributes(); i++){
-
+	    
 	if(i == classIndex())
 	  continue;
-
+	    
 	term = m_NNge.attrWeight(i) * attrDistance(inst, i);
 	term = term * term;
 	sum += term;
@@ -474,7 +473,7 @@ public class NNge
 	  numNotMissingAttr++;
 
       }
-
+	
       if(numNotMissingAttr == 0){
 	return 0;
       } else {
@@ -504,7 +503,7 @@ public class NNge
 
 
     /**
-     * Returns the value of the inf border of the Exemplar.
+     * Returns the value of the inf border of the Exemplar. 
      *
      * @param attrIndex the index of the attribute
      * @return the value of the inf border for this attribute
@@ -521,7 +520,7 @@ public class NNge
 
     /**
      * Returns the value of the sup border of the hyperrectangle
-     * Returns NaN if the HyperRectangle doesn't have any border for this attribute
+     * Returns NaN if the HyperRectangle doesn't have any border for this attribute 
      *
      * @param attrIndex the index of the attribute
      * @return the value of the sup border for this attribute
@@ -601,7 +600,7 @@ public class NNge
       return (numInstances() == 0);
     }
 
-
+    
     /**
      * Returns a description of this Exemplar
      *
@@ -636,12 +635,12 @@ public class NNge
 	return "No Rules (Empty Exemplar)";
 
       String s = "", sep = "";
-
+	
       for(int i = 0; i < numAttributes(); i++){
-
+	    
 	if(i == classIndex())
 	  continue;
-
+	    
 	if(attribute(i).isNumeric()){
 	  if(m_MaxBorder[i] != m_MinBorder[i]){
 	    s += sep + m_MinBorder[i] + "<=" + attribute(i).name() + "<=" + m_MaxBorder[i];
@@ -649,7 +648,7 @@ public class NNge
 	    s += sep + attribute(i).name() + "=" + m_MaxBorder[i];
 	  }
 	  sep = " ^ ";
-
+	    
 	} else {
 	  s += sep + attribute(i).name() + " in {";
 	  String virg = "";
@@ -665,19 +664,19 @@ public class NNge
 	  }
 	  s+="}";
 	  sep = " ^ ";
-	}
+	}	    
       }
       s += "  ("+numInstances() +")";
       return s;
     }
-
+    
     /**
      * Returns the revision string.
-     *
+     * 
      * @return		the revision
      */
     public String getRevision() {
-      return RevisionUtils.extract("$Revision: 6637 $");
+      return RevisionUtils.extract("$Revision: 8108 $");
     }
   }
 
@@ -747,7 +746,7 @@ public class NNge
 
     // instances
     result.setMinimumNumberInstances(0);
-
+    
     return result;
   }
 
@@ -757,8 +756,8 @@ public class NNge
    * must always lead to the same result). Must not change the dataset
    * in any way.
    *
-   * @param data set of instances serving as training data
-   * @throws Exception if the classifier has not been
+   * @param data set of instances serving as training data 
+   * @throws Exception if the classifier has not been 
    * generated successfully
    */
   public void buildClassifier(Instances data) throws Exception {
@@ -769,7 +768,7 @@ public class NNge
     // remove instances with missing class
     data = new Instances(data);
     data.deleteWithMissingClass();
-
+    
     /* initialize the classifier */
 
     m_Train = new Instances(data, 0);
@@ -797,13 +796,13 @@ public class NNge
     for(int cclass = 0; cclass < data.numClasses(); cclass++)
       m_MI_NumClass[cclass] = 0;
     for (int attrIndex = 0; attrIndex < data.numAttributes(); attrIndex++) {
-
+	    
       if(attrIndex == data.classIndex())
 	continue;
-
+	    
       m_MI_MaxArray[attrIndex] = m_MI_MinArray[attrIndex] = Double.NaN;
       m_MI[attrIndex] = Double.NaN;
-
+	    
       if(data.attribute(attrIndex).isNumeric()){
 	m_MI_NumAttrInter[attrIndex] = new int[m_NumFoldersMI];
 	for(int inter = 0; inter < m_NumFoldersMI; inter++){
@@ -815,7 +814,7 @@ public class NNge
 	  m_MI_NumAttrValue[attrIndex][attrValue] = 0;
 	}
       }
-
+	    
       m_MI_NumAttrClassInter[attrIndex] = new int[data.numClasses()][];
       m_MI_NumAttrClassValue[attrIndex] = new int[data.numClasses()][];
 
@@ -826,7 +825,7 @@ public class NNge
 	    m_MI_NumAttrClassInter[attrIndex][cclass][inter] = 0;
 	  }
 	} else if(data.attribute(attrIndex).isNominal()){
-	  m_MI_NumAttrClassValue[attrIndex][cclass] = new int[data.attribute(attrIndex).numValues() + 1];
+	  m_MI_NumAttrClassValue[attrIndex][cclass] = new int[data.attribute(attrIndex).numValues() + 1];		
 	  for(int attrValue = 0; attrValue < data.attribute(attrIndex).numValues() + 1; attrValue++){
 	    m_MI_NumAttrClassValue[attrIndex][cclass][attrValue] = 0;
 	  }
@@ -846,10 +845,10 @@ public class NNge
     Enumeration enu = data.enumerateInstances();
     while(enu.hasMoreElements()){
       update((Instance) enu.nextElement());
-    }
+    }	
   }
 
-
+    
   /**
    * Classifies a given instance.
    *
@@ -864,8 +863,8 @@ public class NNge
     if (m_Train.equalHeaders(instance.dataset()) == false){
       throw new Exception("NNge.classifyInstance : Incompatible instance types !\n" + m_Train.equalHeadersMsg(instance.dataset()));
     }
-
-    Exemplar matched = nearestExemplar(instance);
+	
+    Exemplar matched = nearestExemplar(instance); 
     if(matched == null){
       throw new Exception("NNge.classifyInstance : NNge hasn't been trained !");
     }
@@ -884,14 +883,14 @@ public class NNge
 
     if (m_Train.equalHeaders(instance.dataset()) == false) {
       throw new Exception("Incompatible instance types\n" + m_Train.equalHeadersMsg(instance.dataset()));
-    }
-    update(instance);
+    }	
+    update(instance);	
   }
 
 
 
   /** HIGH LEVEL SUB-FUNCTIONS */
-
+    
 
 
   /**
@@ -917,7 +916,7 @@ public class NNge
 
     /* Nearest Exemplar */
     Exemplar nearest = nearestExemplar(instance);
-
+	
     /* Adjust */
     if(nearest == null){
       Exemplar newEx = new Exemplar(this, m_Train, 10, instance.classValue());
@@ -956,7 +955,7 @@ public class NNge
     return nearest;
   }
 
-
+    
   /**
    * Returns the nearest Exemplar with class c
    *
@@ -981,7 +980,7 @@ public class NNge
     return nearest;
   }
 
-
+    
   /**
    * Generalise an Exemplar (not necessarily predictedExemplar) to match instance.
    * predictedExemplar must be in NNge's lists
@@ -996,7 +995,7 @@ public class NNge
 
     /* try to generalise with the n first exemplars */
     while(n < m_NumAttemptsOfGene && first != null){
-
+	    
       /* find the nearest one starting from first */
       Exemplar closest = first, cur = first;
       double smallestDist = first.squaredDistance(newInst), dist;
@@ -1012,7 +1011,7 @@ public class NNge
       /* remove the Examplar from NNge's lists */
       if(closest == first)
 	first = first.nextWithClass;
-      removeExemplar(closest);
+      removeExemplar(closest); 
 
       /* try to generalise */
       closest.preGeneralise(newInst);
@@ -1024,7 +1023,7 @@ public class NNge
 
       /* it didn't work, put ungeneralised exemplar on the top of the lists */
       closest.cancelGeneralisation();
-      addExemplar(closest);
+      addExemplar(closest);			
 
       n++;
     }
@@ -1057,7 +1056,7 @@ public class NNge
       if(predictedExemplar.holds(newInst)){
 	prune(predictedExemplar, newInst);
       }
-    }
+    }    
   }
 
 
@@ -1088,7 +1087,7 @@ public class NNge
 	/* compute the distance 'delta' to the closest boundary */
 	double norm = m_MaxArray[i] - m_MinArray[i];
 	if(norm != 0){
-	  delta = Math.min((predictedExemplar.getMaxBorder(i) - newInst.value(i)),
+	  delta = Math.min((predictedExemplar.getMaxBorder(i) - newInst.value(i)), 
 			   (newInst.value(i) - predictedExemplar.getMinBorder(i))) / norm;
 	} else {
 	  delta = Double.POSITIVE_INFINITY;
@@ -1128,7 +1127,7 @@ public class NNge
 	if(n > biggest_N_Nom){
 	  biggest_N_Nom = n;
 	  nomAttr = i;
-	}
+	} 
       }
     }
 
@@ -1175,7 +1174,7 @@ public class NNge
 	}
       }
     }
-
+	
     /* treat the left alone Instances */
     while(leftAlone.size() != 0){
 
@@ -1205,14 +1204,14 @@ public class NNge
     }
     if(b.numInstances() != 0){
       initWeight(b);
-      addExemplar(b);
+      addExemplar(b);	    
     }
   }
 
 
   /**
    * Returns true if the instance don't have the same feature values
-   *
+   * 
    * @param inst1 an instance
    * @param inst2 an instance
    * @return true if the instance don't have the same feature values
@@ -1248,8 +1247,8 @@ public class NNge
 
 
   /**
-   * Updates the minimum, maximum, sum, sumSquare values for all the attributes
-   *
+   * Updates the minimum, maximum, sum, sumSquare values for all the attributes 
+   * 
    * @param instance the new instance
    */
   private void updateMinMax(Instance instance){
@@ -1257,18 +1256,18 @@ public class NNge
     for (int j = 0; j < m_Train.numAttributes(); j++) {
       if(m_Train.classIndex() == j || m_Train.attribute(j).isNominal())
 	continue;
-      if (instance.value(j) < m_MinArray[j])
+      if (instance.value(j) < m_MinArray[j]) 
 	m_MinArray[j] = instance.value(j);
       if (instance.value(j) > m_MaxArray[j])
 	m_MaxArray[j] = instance.value(j);
-    }
+    }    
   }
 
 
   /**
    * Updates the data for computing the mutual information
    *
-   * MUST be called AFTER adding inst in m_Train
+   * MUST be called AFTER adding inst in m_Train 
    *
    * @param inst the new instance
    * @throws Exception is thrown if an inconsistent situation is met
@@ -1291,11 +1290,11 @@ public class NNge
 
       /* which is a numeric attribute */
       else if(m_Train.attribute(attrIndex).isNumeric()){
-
+		
 	/* if max-min have to be updated */
 	if(Double.isNaN(m_MI_MaxArray[attrIndex]) ||
 	   Double.isNaN(m_MI_MinArray[attrIndex]) ||
-	   m_MI_MaxArray[attrIndex] < inst.value(attrIndex) ||
+	   m_MI_MaxArray[attrIndex] < inst.value(attrIndex) || 
 	   inst.value(attrIndex) < m_MI_MinArray[attrIndex]){
 
 	  /* then update them */
@@ -1303,7 +1302,7 @@ public class NNge
 	  if(Double.isNaN(m_MI_MinArray[attrIndex])) m_MI_MinArray[attrIndex] = inst.value(attrIndex);
 	  if(m_MI_MaxArray[attrIndex] < inst.value(attrIndex)) m_MI_MaxArray[attrIndex] = inst.value(attrIndex);
 	  if(m_MI_MinArray[attrIndex] > inst.value(attrIndex)) m_MI_MinArray[attrIndex] = inst.value(attrIndex);
-
+		    
 	  /* and re-compute everything from scratch... (just for this attribute) */
 	  double delta = (m_MI_MaxArray[attrIndex] - m_MI_MinArray[attrIndex]) / (double) m_NumFoldersMI;
 
@@ -1314,7 +1313,7 @@ public class NNge
 
 	    /* for each class */
 	    for(int cclass = 0; cclass < m_Train.numClasses(); cclass++){
-
+			    
 	      m_MI_NumAttrClassInter[attrIndex][cclass][inter] = 0;
 
 	      /* count */
@@ -1330,13 +1329,13 @@ public class NNge
 	      }
 	    }
 	  }
-
+		
 	  /* max-min don't have to be updated */
 	} else {
 
 	  /* still have to incr the card of the correct interval */
 	  double delta = (m_MI_MaxArray[attrIndex] - m_MI_MinArray[attrIndex]) / (double) m_NumFoldersMI;
-
+		    
 	  /* for each interval */
 	  for(int inter = 0; inter < m_NumFoldersMI; inter++){
 	    /* which contains inst*/
@@ -1347,10 +1346,10 @@ public class NNge
 	    }
 	  }
 	}
-
+		
 	/* update the mutual information of this attribute... */
 	m_MI[attrIndex] = 0;
-
+		
 	/* for each interval, for each class */
 	for(int inter = 0; inter < m_NumFoldersMI; inter++){
 	  for(int cclass = 0; cclass < m_Train.numClasses(); cclass++){
@@ -1362,17 +1361,17 @@ public class NNge
 	      m_MI[attrIndex] += pXY * Utils.log2(pXY / (pX * pY));
 	  }
 	}
-
+		
 	/* which is a nominal attribute */
       } else if (m_Train.attribute(attrIndex).isNominal()){
-
+		
 	/*incr the card of the correct 'values' */
 	m_MI_NumAttrValue[attrIndex][(int) inst.value(attrIndex)]++;
 	m_MI_NumAttrClassValue[attrIndex][(int) inst.classValue()][(int) inst.value(attrIndex)]++;
-
+		
 	/* update the mutual information of this attribute... */
 	m_MI[attrIndex] = 0;
-
+		
 	/* for each nominal value, for each class */
 	for(int attrValue = 0; attrValue < m_Train.attribute(attrIndex).numValues() + 1; attrValue++){
 	  for(int cclass = 0; cclass < m_Train.numClasses(); cclass++){
@@ -1388,7 +1387,7 @@ public class NNge
       } else {
 	throw new Exception("NNge.updateMI : Cannot deal with 'string attribute'.");
       }
-    }
+    }	
   }
 
 
@@ -1398,7 +1397,7 @@ public class NNge
    *
    * @param ex the Exemplar to initialise
    */
-  private void initWeight(Exemplar ex) {
+  private void initWeight(Exemplar ex) {	
     int pos = 0, neg = 0, n = 0;
     Exemplar cur = m_Exemplars;
     if (cur == null){
@@ -1424,7 +1423,7 @@ public class NNge
    * @param ex a new Exemplar to add
    */
   private void addExemplar(Exemplar ex) {
-
+	
     /* add ex at the top of the general list */
     ex.next = m_Exemplars;
     if(m_Exemplars != null)
@@ -1443,9 +1442,9 @@ public class NNge
 
   /**
    * Removes an Exemplar from NNge's lists
-   * Ensure that the Exemplar is actually in NNge's lists.
+   * Ensure that the Exemplar is actually in NNge's lists. 
    *   Likely to do something wrong if this condition is not respected.
-   * Due to the list implementation, the Exemplar can appear only once in the lists :
+   * Due to the list implementation, the Exemplar can appear only once in the lists : 
    *   once removed, the exemplar is not in the lists anymore.
    *
    * @param ex a new Exemplar to add
@@ -1457,7 +1456,7 @@ public class NNge
       m_Exemplars = ex.next;
       if(m_Exemplars != null)
 	m_Exemplars.previous = null;
-
+	
     } else {
       ex.previous.next = ex.next;
       if(ex.next != null){
@@ -1471,7 +1470,7 @@ public class NNge
       m_ExemplarsByClass[(int) ex.classValue()] = ex.nextWithClass;
       if(m_ExemplarsByClass[(int) ex.classValue()] != null)
 	m_ExemplarsByClass[(int) ex.classValue()].previousWithClass = null;
-
+	
     } else {
       ex.previousWithClass.nextWithClass = ex.nextWithClass;
       if(ex.nextWithClass != null){
@@ -1492,7 +1491,7 @@ public class NNge
     return m_MI[index];
   }
 
-
+    
   /**
    * Returns a description of this classifier.
    *
@@ -1502,7 +1501,7 @@ public class NNge
 
     String s;
     Exemplar cur = m_Exemplars;
-    int i;
+    int i;	
 
    if (m_MinArray == null) {
       return "No classifier built";
@@ -1521,7 +1520,7 @@ public class NNge
       s += "\tclass " + m_Train.attribute(m_Train.classIndex()).value((int) cur.classValue()) + " IF : ";
       s += cur.toRules() + "\n";
       nbHyp++;
-      nbHypClass[(int) cur.classValue()]++;
+      nbHypClass[(int) cur.classValue()]++;	    
       if (cur.numInstances() == 1){
 	nbSingle++;
 	nbSingleClass[(int) cur.classValue()]++;
@@ -1530,17 +1529,17 @@ public class NNge
     }
     s += "\nStat :\n";
     for(i = 0; i<nbHypClass.length; i++){
-      s += "\tclass " + m_Train.attribute(m_Train.classIndex()).value(i) +
-	" : " + Integer.toString(nbHypClass[i]) + " exemplar(s) including " +
+      s += "\tclass " + m_Train.attribute(m_Train.classIndex()).value(i) + 
+	" : " + Integer.toString(nbHypClass[i]) + " exemplar(s) including " + 
 	Integer.toString(nbHypClass[i] - nbSingleClass[i]) + " Hyperrectangle(s) and " +
 	Integer.toString(nbSingleClass[i]) + " Single(s).\n";
     }
-    s += "\n\tTotal : " + Integer.toString(nbHyp) + " exemplars(s) including " +
+    s += "\n\tTotal : " + Integer.toString(nbHyp) + " exemplars(s) including " + 
       Integer.toString(nbHyp - nbSingle) + " Hyperrectangle(s) and " +
       Integer.toString(nbSingle) + " Single(s).\n";
-
+	
     s += "\n";
-
+	
     s += "\tFeature weights : ";
 
     String space = "[";
@@ -1558,7 +1557,7 @@ public class NNge
 
 
   /** OPTION HANDLER FUNCTION */
-
+    
 
   /**
    * Returns an enumeration of all the available options..
@@ -1571,35 +1570,35 @@ public class NNge
 
     newVector.addElement(new Option(
 				    "\tNumber of attempts of generalisation.\n",
-				    "G",
-				    1,
+				    "G", 
+				    1, 
 				    "-G <value>"));
     newVector.addElement(new Option(
 				    "\tNumber of folder for computing the mutual information.\n",
-				    "I",
-				    1,
+				    "I", 
+				    1, 
 				    "-I <value>"));
 
     return newVector.elements();
   }
 
-
+    
   /**
    * Sets the OptionHandler's options using the given list. All options
    * will be set (or reset) during this call (i.e. incremental setting
    * of options is not possible). <p/>
-   *
+   * 
    <!-- options-start -->
    * Valid options are: <p/>
-   *
+   * 
    * <pre> -G &lt;value&gt;
    *  Number of attempts of generalisation.
    * </pre>
-   *
+   * 
    * <pre> -I &lt;value&gt;
    *  Number of folder for computing the mutual information.
    * </pre>
-   *
+   * 
    <!-- options-end -->
    *
    * @param options the list of options as an array of strings
@@ -1630,7 +1629,7 @@ public class NNge
     }
   }
 
-
+    
   /**
    * Gets the current option settings for the OptionHandler.
    *
@@ -1704,14 +1703,14 @@ public class NNge
   public void setNumFoldersMIOption(int newIntParameter) {
     m_NumFoldersMI = newIntParameter;
   }
-
+  
   /**
    * Returns the revision string.
-   *
+   * 
    * @return		the revision
    */
   public String getRevision() {
-    return RevisionUtils.extract("$Revision: 6637 $");
+    return RevisionUtils.extract("$Revision: 8108 $");
   }
 
   /**
